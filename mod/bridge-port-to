@@ -11,12 +11,11 @@
 :set BridgePortTo do={
   :local BridgePortTo [ :tostr $1 ];
 
-  :global CharacterReplace;
   :global IfThenElse;
   :global LogPrintExit2;
   :global ParseKeyValueStore;
 
-  :local InterfaceReEnable [ :toarray "" ];
+  :local InterfaceReEnable ({});
   :foreach BridgePort in=[ /interface/bridge/port/find where !(comment=[]) ] do={
     :local BridgePortVal [ /interface/bridge/port/get $BridgePort ];
     :foreach Config,BridgeDefault in=[ $ParseKeyValueStore ($BridgePortVal->"comment") ] do={
@@ -44,9 +43,12 @@
               /ip/dhcp-client/disable $DHCPClient;
               :delay 200ms;
             }
-            /interface/ethernet/disable [ find where name=$BridgePortVal->"interface" ];
+            :local Disable [ /interface/ethernet/find where name=$BridgePortVal->"interface" ];
+            :if ([ :len $Disable ] > 0) do={
+              /interface/ethernet/disable $Disable;
+              :set InterfaceReEnable ($InterfaceReEnable, $Disable);
+            }
             /interface/bridge/port/set disabled=no bridge=$BridgeDefault $BridgePort;
-            :set InterfaceReEnable ($InterfaceReEnable, $BridgePortVal->"interface");
           } else={
             $LogPrintExit2 debug $0 ("Interface " . $BridgePortVal->"interface" . " already connected to " . $BridgePortTo . \
                 " bridge " . $BridgeDefault . ".") false;
@@ -57,10 +59,7 @@
   }
   :if ([ :len $InterfaceReEnable ] > 0) do={
     :delay 2s;
-    $LogPrintExit2 info $0 ("Re-enabling interfaces: " . \
-      [ $CharacterReplace [ :tostr $InterfaceReEnable ] ";" " " ]) false;
-    :foreach Interface in=$InterfaceReEnable do={
-      /interface/ethernet/enable [ find where name=$Interface ];
-    }
+    $LogPrintExit2 info $0 ("Re-enabling interfaces...") false;
+    /interface/ethernet/enable $InterfaceReEnable;
   }
 }

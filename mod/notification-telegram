@@ -12,12 +12,18 @@
 :set FlushTelegramQueue do={
   :global TelegramQueue;
 
+  :global IsFullyConnected;
   :global LogPrintExit2;
+
+  :if ([ $IsFullyConnected ] = false) do={
+    $LogPrintExit2 debug $0 ("System is not fully connected, not flushing.") false;
+    :return false;
+  }
 
   :local AllDone true;
   :local QueueLen [ :len $TelegramQueue ];
 
-  :if ([ :len [ /system/scheduler/find where name="FlushTelegramQueue" ] ] > 0 && $QueueLen = 0) do={
+  :if ([ :len [ /system/scheduler/find where name=$0 ] ] > 0 && $QueueLen = 0) do={
     $LogPrintExit2 warning $0 ("Flushing Telegram messages from scheduler, but queue is empty.") false;
   }
 
@@ -39,7 +45,7 @@
   }
 
   :if ($AllDone = true && $QueueLen = [ :len $TelegramQueue ]) do={
-    /system/scheduler/remove [ find where name="FlushTelegramQueue" ];
+    /system/scheduler/remove [ find where name=$0 ];
     :set TelegramQueue;
   }
 }
@@ -133,21 +139,21 @@
     $LogPrintExit2 info $0 ("Failed sending telegram notification! Queuing...") false;
 
     :if ([ :typeof $TelegramQueue ] = "nothing") do={
-      :set TelegramQueue [ :toarray "" ];
+      :set TelegramQueue ({});
     }
     :set Text ($Text . [ $UrlEncode ("\n" . [ $SymbolForNotification "alarm-clock" ] . \
       [ $EscapeMD ("This message was queued since " . [ /system/clock/get date ] . \
       " " . [ /system/clock/get time ] . " and may be obsolete.") "plain" ]) ]);
     :set ($TelegramQueue->[ :len $TelegramQueue ]) { chatid=$ChatId; tokenid=$TokenId;
       parsemode=$ParseMode; text=$Text; silent=($Notification->"silent") };
-    :if ([ :len [ /system/scheduler/find where name="FlushTelegramQueue" ] ] = 0) do={
-      /system/scheduler/add name=FlushTelegramQueue interval=1m start-time=startup \
+    :if ([ :len [ /system/scheduler/find where name="\$FlushTelegramQueue" ] ] = 0) do={
+      /system/scheduler/add name="\$FlushTelegramQueue" interval=1m start-time=startup \
         on-event=(":global FlushTelegramQueue; \$FlushTelegramQueue;");
     }
   }
 }
 
-# send notification via telegram - expects at lease two string arguments
+# send notification via telegram - expects at least two string arguments
 :set SendTelegram do={
   :global SendTelegram2;
 

@@ -124,6 +124,11 @@ everything is up-to-date it will not produce any output.
 
 ![screenshot: update scripts](README.d/08-update-scripts.avif)
 
+If the update includes news or requires configuration changes a notification
+is sent - in addition to terminal output and log messages.
+
+![news and changes notification](README.d/news-and-changes-notification.svg)
+
 Adding a script
 ---------------
 
@@ -240,6 +245,18 @@ without modification.
 Starting a script's name with `mod/` makes it a module and it is run
 automatically by `global-functions`.
 
+Removing a script
+-----------------
+
+There is no specific function for script removal. Just remove it from
+configuration...
+
+    /system/script/remove to-be-removed;
+
+![screenshot: remove script](README.d/13-remove-script.avif)
+
+Possibly a scheduler and other configuration has to be removed as well.
+
 Contact
 -------
 
@@ -253,7 +270,7 @@ support!
 Contribute
 ----------
 
-Thanks a lot for [past contributions](CONTRIBUTIONS.md)!
+Thanks a lot for [past contributions](CONTRIBUTIONS.md)! ❤️
 
 ### Patches, issues and whishlist
 

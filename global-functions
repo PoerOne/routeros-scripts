@@ -10,7 +10,7 @@
 :local 0 "global-functions";
 
 # expected configuration version
-:global ExpectedConfigVersion 81;
+:global ExpectedConfigVersion 83;
 
 # global variables not to be changed by user
 :global GlobalFunctionsReady false;
@@ -22,22 +22,26 @@
 :global CertificateNameByCN;
 :global CharacterReplace;
 :global CleanFilePath;
-:global DefaultRouteIsReachable;
 :global DeviceInfo;
-:global DNSIsResolving;
 :global DownloadPackage;
 :global EitherOr;
 :global EscapeForRegEx;
 :global FlushEmailQueue;
 :global GetMacVendor;
+:global GetRandom20CharAlNum;
 :global GetRandom20CharHex;
 :global GetRandomNumber;
 :global HexToNum;
 :global IfThenElse;
+:global IsDefaultRouteReachable;
+:global IsDNSResolving;
+:global IsFullyConnected;
+:global IsTimeSync;
 :global LogPrintExit2;
 :global MkDir;
 :global NotificationFunctions;
 :global ParseKeyValueStore;
+:global PrettyPrint;
 :global QuotedPrintable;
 :global RandomDelay;
 :global Read;
@@ -51,7 +55,6 @@
 :global SendNotification2;
 :global SymbolByUnicodeName;
 :global SymbolForNotification;
-:global TimeIsSync;
 :global UrlEncode;
 :global ValidateSyntax;
 :global VersionToNum;
@@ -183,18 +186,9 @@
   :return $Path;
 }
 
-# default route is reachable
-:set DefaultRouteIsReachable do={
-  :if ([ :len [ /ip/route/find where dst-address=0.0.0.0/0 active routing-table=main ] ] > 0) do={
-    :return true;
-  }
-  :return false;
-}
-
 # get readable device info
 :set DeviceInfo do={
   :global ExpectedConfigVersion;
-  :global GlobalConfigVersion;
   :global Identity;
 
   :global IfThenElse;
@@ -217,7 +211,7 @@
            (" " . $RouterBoard->"revision") ] . \
        "\nSerial number:  " . $RouterBoard->"serial-number") ] . \
     [ $IfThenElse ([ :len ($License->"level") ] > 0) \
-       ("\nLicense:        " . $License->"level") ] . \
+      ("\nLicense:        " . $License->"level") ] . \
        "\nRouterOS:" . \
        "\n    Channel:    " . $Update->"channel" . \
        "\n    Installed:  " . $Update->"installed-version" . \
@@ -226,23 +220,9 @@
       ("\n    Available:  " . $Update->"latest-version") ] . \
     [ $IfThenElse ($RouterBoard->"routerboard" = true && \
         $RouterBoard->"current-firmware" != $RouterBoard->"upgrade-firmware") \
-       ("\n    Firmware:   " . $RouterBoard->"current-firmware") ] . \
+      ("\n    Firmware:   " . $RouterBoard->"current-firmware") ] . \
        "\nRouterOS-Scripts:" . \
-       "\n    Current:    " . $GlobalConfigVersion . \
-    [ $IfThenElse ($GlobalConfigVersion != $ExpectedConfigVersion) \
-      ("\n    Expected:   " . $ExpectedConfigVersion) ]);
-}
-
-# check if DNS is resolving
-:set DNSIsResolving do={
-  :global CharacterReplace;
-
-  :do {
-    :resolve "low-ttl.eworm.de";
-  } on-error={
-    :return false;
-  }
-  :return true;
+       "\n    Version:    " . $ExpectedConfigVersion);
 }
 
 # download package from upgrade server
@@ -343,22 +323,28 @@
   :global EmailQueue;
 
   :global EitherOr;
+  :global IsDNSResolving;
+  :global IsTimeSync;
   :global LogPrintExit2;
-  :global TimeIsSync;
 
   :local AllDone true;
   :local QueueLen [ :len $EmailQueue ];
 
-  :if ([ $TimeIsSync ] = false) do={
+  :if ([ $IsTimeSync ] = false) do={
     $LogPrintExit2 debug $0 ("Time is not synced, not flushing.") false;
     :return false;
   }
 
-  :if ([ :len [ /system/scheduler/find where name="FlushEmailQueue" ] ] > 0 && $QueueLen = 0) do={
+  :if ([ :typeof [ :toip [ /tool/e-mail/get address ] ] ] != "ip" && [ $IsDNSResolving ] = false) do={
+    $LogPrintExit2 debug $0 ("Server address is a DNS name and resolving fails, not flushing.") false;
+    :return false;
+  }
+
+  :if ([ :len [ /system/scheduler/find where name=$0 ] ] > 0 && $QueueLen = 0) do={
     $LogPrintExit2 warning $0 ("Flushing E-Mail messages from scheduler, but queue is empty.") false;
   }
 
-  /system/scheduler/set interval=($QueueLen . "m") [ find where name="FlushEmailQueue" ];
+  /system/scheduler/set interval=($QueueLen . "m") [ find where name=$0 ];
 
   :foreach Id,Message in=$EmailQueue do={
     :if ([ :typeof $Message ] = "array" ) do={
@@ -388,10 +374,10 @@
   }
 
   :if ($AllDone = true && $QueueLen = [ :len $EmailQueue ]) do={
-    /system/scheduler/remove [ find where name="FlushEmailQueue" ];
+    /system/scheduler/remove [ find where name=$0 ];
     :set EmailQueue;
   } else={
-    /system/scheduler/set interval=1m [ find where name="FlushEmailQueue" ];
+    /system/scheduler/set interval=1m [ find where name=$0 ];
   }
 }
 
@@ -403,7 +389,7 @@
   :global LogPrintExit2;
 
   :do {
-    :if ([ $CertificateAvailable "Cloudflare Inc ECC CA-3" ] = false) do={
+    :if ([ $CertificateAvailable "R3" ] = false) do={
       $LogPrintExit2 warning $0 ("Downloading required certificate failed.") true;
     }
     :local Vendor ([ /tool/fetch check-certificate=yes-without-crl \
@@ -421,22 +407,25 @@
   }
 }
 
+# generate random 20 chars alphabetical (A-Z & a-z) and numerical (0-9)
+:set GetRandom20CharAlNum do={
+  :global EitherOr;
+
+  :return [ :rndstr length=[ $EitherOr [ :tonum $1 ] 20 ] from="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789" ];
+}
+
 # generate random 20 chars hex (0-9 and a-f)
 :set GetRandom20CharHex do={
-  :return ([ /certificate/scep-server/otp/generate minutes-valid=0 as-value ]->"password");
+  :global EitherOr;
+
+  :return [ :rndstr length=[ $EitherOr [ :tonum $1 ] 20 ] from="0123456789abcdef" ];
 }
 
 # generate random number
 :set GetRandomNumber do={
-  :local Max 4294967295;
-  :if ([ :typeof $1 ] != "nothing" ) do={
-    :set Max ([ :tonum $1 ] + 1);
-  }
+  :global EitherOr;
 
-  :global GetRandom20CharHex;
-  :global HexToNum;
-
-  :return ([ $HexToNum [ :pick [ $GetRandom20CharHex ] 0 15 ] ] % $Max);
+  :return [ :rndnum from=0 to=[ $EitherOr [ :tonum $1 ] 4294967295 ] ];
 }
 
 # convert from hex (string) to num
@@ -460,6 +449,74 @@
     :return $2;
   }
   :return $3;
+}
+
+# check if default route is reachable
+:set IsDefaultRouteReachable do={
+  :if ([ :len [ /ip/route/find where dst-address=0.0.0.0/0 active routing-table=main ] ] > 0) do={
+    :return true;
+  }
+  :return false;
+}
+
+# check if DNS is resolving
+:set IsDNSResolving do={
+  :global CharacterReplace;
+
+  :do {
+    :resolve "low-ttl.eworm.de";
+  } on-error={
+    :return false;
+  }
+  :return true;
+}
+
+# check if system is is fully connected (default route reachable, DNS resolving, time sync)
+:set IsFullyConnected do={
+  :global IsDefaultRouteReachable;
+  :global IsDNSResolving;
+  :global IsTimeSync;
+
+  :if ([ $IsDefaultRouteReachable ] = false) do={
+    :return false;
+  }
+  :if ([ $IsDNSResolving ] = false) do={
+    :return false;
+  }
+  :if ([ $IsTimeSync ] = false) do={
+    :return false;
+  }
+  :return true;
+}
+
+# check if system time is sync
+:set IsTimeSync do={
+  :global IsTimeSyncCached;
+
+  :global LogPrintExit2;
+
+  :if ($IsTimeSyncCached = true) do={
+    :return true;
+  }
+
+  :if ([ /system/ntp/client/get enabled ] = true) do={
+    :if ([ /system/ntp/client/get status ] = "synchronized") do={
+      :set IsTimeSyncCached true;
+      :return true;
+    }
+    :return false;
+  }
+
+  :if ([ /ip/cloud/get update-time ] = true) do={
+    :if ([ :typeof [ /ip/cloud/get public-address ] ] = "ip") do={
+      :set IsTimeSyncCached true;
+      :return true;
+    }
+    :return false;
+  }
+
+  $LogPrintExit2 debug $0 ("No time source configured! Returning gracefully...") false;
+  :return true;
 }
 
 # log and print with same text, optionally exit
@@ -540,7 +597,7 @@
 
 # prepare NotificationFunctions array
 :if ([ :typeof $NotificationFunctions ] != "array") do={
-  :set NotificationFunctions [ :toarray "" ];
+  :set NotificationFunctions ({});
 }
 
 # send notification via e-mail - expects one array argument
@@ -567,7 +624,7 @@
   }
 
   :if ([ :typeof $EmailQueue ] = "nothing") do={
-      :set EmailQueue [ :toarray "" ];
+      :set EmailQueue ({});
   }
   :local Signature [ /system/note/get note ];
   :set ($EmailQueue->[ :len $EmailQueue ]) {
@@ -577,8 +634,8 @@
       [ $IfThenElse ([ :len ($Notification->"link") ] > 0) ("\n\n" . ($Notification->"link")) "" ] . \
       [ $IfThenElse ([ :len $Signature ] > 0) ("\n-- \n" . $Signature) "" ]); \
     attach=($Notification->"attach"); remove-attach=($Notification->"remove-attach") };
-  :if ([ :len [ /system/scheduler/find where name="FlushEmailQueue" ] ] = 0) do={
-    /system/scheduler/add name=FlushEmailQueue interval=1s start-time=startup \
+  :if ([ :len [ /system/scheduler/find where name="\$FlushEmailQueue" ] ] = 0) do={
+    /system/scheduler/add name="\$FlushEmailQueue" interval=1s start-time=startup \
       on-event=(":global FlushEmailQueue; \$FlushEmailQueue;");
   }
 }
@@ -589,7 +646,7 @@
   :if ([ :typeof $Source ] != "array") do={
     :set Source [ :tostr $1 ];
   }
-  :local Result [ :toarray "" ];
+  :local Result ({});
   :foreach KeyValue in=[ :toarray $Source ] do={
     :if ([ :find $KeyValue "=" ]) do={
       :set ($Result->[ :pick $KeyValue 0 [ :find $KeyValue "=" ] ]) \
@@ -599,6 +656,15 @@
     }
   }
   :return $Result;
+}
+
+# print lines with trailing carriage return
+:set PrettyPrint do={
+  :local Input [ :tostr $1 ];
+
+  :global CharacterReplace;
+
+  :put [ $CharacterReplace $Input ("\n") ("\n\r") ];
 }
 
 # convert string to quoted-printable
@@ -696,9 +762,9 @@
   :local NewComment [ :tostr   $2 ];
 
   :global ExpectedConfigVersion;
-  :global GlobalConfigVersion;
   :global Identity;
   :global IDonate;
+  :global NoNewsAndChangesNotification;
   :global NotificationsWithSymbols;
   :global ScriptUpdatesBaseUrl;
   :global ScriptUpdatesFetch;
@@ -714,6 +780,10 @@
   :global ValidateSyntax;
 
   :if ([ $CertificateAvailable "R3" ] = false) do={
+    $LogPrintExit2 warning $0 ("Downloading certificate failed, trying without.") false;
+  }
+
+  :if ([ $CertificateAvailable "E1" ] = false) do={
     $LogPrintExit2 warning $0 ("Downloading certificate failed, trying without.") false;
   }
 
@@ -761,7 +831,13 @@
             :set SourceNew ($Result->"data");
           }
         } on-error={
-          $LogPrintExit2 warning $0 ("Failed fetching script '" . $ScriptVal->"name" . "'!") false;
+          :if ($ScriptVal->"source" = "#!rsc by RouterOS\n") do={
+            $LogPrintExit2 warning $0 ("Failed fetching script '" . $ScriptVal->"name" . \
+              "', removing dummy. Typo on installation?") false;
+            /system/script/remove $Script;
+          } else={
+            $LogPrintExit2 warning $0 ("Failed fetching script '" . $ScriptVal->"name" . "'!") false;
+          }
         }
       }
     }
@@ -863,16 +939,15 @@
     }
 
     :if ($SentConfigChangesNotification != $ExpectedConfigVersion && \
-         $GlobalConfigVersion < $ExpectedConfigVersion) do={
-      :local NotificationMessage ("Current configuration on " . $Identity . \
-          " is out of date. Please update global-config-overlay, then increase " . \
-          "\$GlobalConfigVersion (currently " . $GlobalConfigVersion . \
-          ") to " . $ExpectedConfigVersion . " and re-run global-config.");
+         $NoNewsAndChangesNotification != true) do={
+      :local NotificationMessage ("The configuration version on " . $Identity . " increased " . \
+         "to " . $ExpectedConfigVersion . ", current configuration may need modification. " . \
+         "Please review and update global-config-overlay, then re-run global-config.");
       $LogPrintExit2 info $0 ($NotificationMessage) false;
 
       :if ([ :len $GlobalConfigChanges ] > 0) do={
         :set NotificationMessage ($NotificationMessage . "\n\nChanges:");
-        :for I from=($GlobalConfigVersion + 1) to=$ExpectedConfigVersion do={
+        :for I from=($ExpectedConfigVersionBefore + 1) to=$ExpectedConfigVersion do={
           :local Change ($GlobalConfigChanges->[ :tostr $I ]);
           :set NotificationMessage ($NotificationMessage . "\n " . \
               [ $IfThenElse ($NotificationsWithSymbols = true) ("\E2\97\8F") "*" ] . " " . $Change);
@@ -915,10 +990,10 @@
 
   :global ScriptLockOrder;
   :if ([ :typeof $ScriptLockOrder ] = "nothing") do={
-    :set ScriptLockOrder [ :toarray "" ];
+    :set ScriptLockOrder ({});
   }
   :if ([ :typeof ($ScriptLockOrder->$Script) ] = "nothing") do={
-    :set ($ScriptLockOrder->$Script) [ :toarray "" ];
+    :set ($ScriptLockOrder->$Script) ({});
   }
 
   :local JobCount do={
@@ -993,7 +1068,7 @@
       }
     }
 
-    :set ($ScriptLockOrder->$Script) [ :toarray "" ];
+    :set ($ScriptLockOrder->$Script) ({});
   }
 
   :if ([ :len [ /system/script/find where name=$Script ] ] = 0) do={
@@ -1006,7 +1081,7 @@
 
   :if ([ $TicketCount $Script ] >= [ $JobCount $Script ]) do={
     $LogPrintExit2 error $0 ("More tickets than running scripts '" . $Script . "', resetting!") false;
-    :set ($ScriptLockOrder->$Script) [ :toarray "" ];
+    :set ($ScriptLockOrder->$Script) ({});
     /system/script/job/remove [ find where script=$Script ];
   }
 
@@ -1031,7 +1106,7 @@
   :return true;
 }
 
-# send notification via e-mail - expects at lease two string arguments
+# send notification via e-mail - expects at least two string arguments
 :set SendEMail do={
   :global SendEMail2;
 
@@ -1047,7 +1122,7 @@
   ($NotificationFunctions->"email") ("\$NotificationFunctions->\"email\"") $Notification;
 }
 
-# send notification via NotificationFunctions - expects at lease two string arguments
+# send notification via NotificationFunctions - expects at least two string arguments
 :set SendNotification do={
   :global SendNotification2;
 
@@ -1076,6 +1151,7 @@
     "chart-increasing"="\F0\9F\93\88";
     "cloud"="\E2\98\81";
     "cross-mark"="\E2\9D\8C";
+    "earth"="\F0\9F\8C\8D";
     "fire"="\F0\9F\94\A5";
     "floppy-disk"="\F0\9F\92\BE";
     "high-voltage-sign"="\E2\9A\A1";
@@ -1108,34 +1184,6 @@
     :set Return ($Return . [ $SymbolByUnicodeName $Symbol ]);
   }
   :return ($Return . " ");
-}
-
-# check if system time is sync
-:set TimeIsSync do={
-  :global LogPrintExit2;
-
-  :if ([ /system/ntp/client/get enabled ] = true) do={
-    :do {
-      :if ([ /system/ntp/client/get status ] = "synchronized") do={
-        :return true;
-      }
-    } on-error={
-      :if ([ :typeof [ /system/ntp/client/get last-adjustment ] ] = "time") do={
-        :return true;
-      }
-    }
-    :return false;
-  }
-
-  :if ([ /ip/cloud/get ddns-enabled ] = true && [ /ip/cloud/get update-time ] = true) do={
-    :if ([ :typeof [ /ip/cloud/get public-address ] ] = "ip") do={
-      :return true;
-    }
-    :return false;
-  }
-
-  $LogPrintExit2 debug $0 ("No time source configured! Returning gracefully...") false;
-  :return true;
 }
 
 # url encoding
@@ -1208,18 +1256,18 @@
 
 # wait for default route to be reachable
 :set WaitDefaultRouteReachable do={
-  :global DefaultRouteIsReachable;
+  :global IsDefaultRouteReachable;
 
-  :while ([ $DefaultRouteIsReachable ] = false) do={
+  :while ([ $IsDefaultRouteReachable ] = false) do={
     :delay 1s;
   }
 }
 
 # wait for DNS to resolve
 :set WaitDNSResolving do={
-  :global DNSIsResolving;
+  :global IsDNSResolving;
 
-  :while ([ $DNSIsResolving ] = false) do={
+  :while ([ $IsDNSResolving ] = false) do={
     :delay 1s;
   }
 }
@@ -1256,10 +1304,9 @@
 
 # wait for time to become synced
 :set WaitTimeSync do={
-  :global LogPrintExit2;
-  :global TimeIsSync;
+  :global IsTimeSync;
 
-  :while ([ $TimeIsSync ] = false) do={
+  :while ([ $IsTimeSync ] = false) do={
     :delay 1s;
   }
 }

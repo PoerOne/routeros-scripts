@@ -13,12 +13,18 @@
 :set FlushMatrixQueue do={
   :global MatrixQueue;
 
+  :global IsFullyConnected;
   :global LogPrintExit2;
+
+  :if ([ $IsFullyConnected ] = false) do={
+    $LogPrintExit2 debug $0 ("System is not fully connected, not flushing.") false;
+    :return false;
+  }
 
   :local AllDone true;
   :local QueueLen [ :len $MatrixQueue ];
 
-  :if ([ :len [ /system/scheduler/find where name="FlushMatrixQueue" ] ] > 0 && $QueueLen = 0) do={
+  :if ([ :len [ /system/scheduler/find where name=$0 ] ] > 0 && $QueueLen = 0) do={
     $LogPrintExit2 warning $0 ("Flushing Matrix messages from scheduler, but queue is empty.") false;
   }
 
@@ -40,7 +46,7 @@
   }
 
   :if ($AllDone = true && $QueueLen = [ :len $MatrixQueue ]) do={
-    /system/scheduler/remove [ find where name="FlushMatrixQueue" ];
+    /system/scheduler/remove [ find where name=$0 ];
     :set MatrixQueue;
   }
 }
@@ -123,7 +129,7 @@
     $LogPrintExit2 info $0 ("Failed sending Matrix notification! Queuing...") false;
 
     :if ([ :typeof $MatrixQueue ] = "nothing") do={
-      :set MatrixQueue [ :toarray "" ];
+      :set MatrixQueue ({});
     }
     :local Text ([ $SymbolForNotification "alarm-clock" ] . \
       "This message was queued since " . [ /system/clock/get date ] . \
@@ -133,14 +139,14 @@
     :set ($MatrixQueue->[ :len $MatrixQueue ]) { room=$Room; \
       accesstoken=$AccessToken; homeserver=$HomeServer; \
       plain=$Plain; formatted=$Formatted };
-    :if ([ :len [ /system/scheduler/find where name="FlushMatrixQueue" ] ] = 0) do={
-      /system/scheduler/add name=FlushMatrixQueue interval=1m start-time=startup \
+    :if ([ :len [ /system/scheduler/find where name="\$FlushMatrixQueue" ] ] = 0) do={
+      /system/scheduler/add name="\$FlushMatrixQueue" interval=1m start-time=startup \
         on-event=(":global FlushMatrixQueue; \$FlushMatrixQueue;");
     }
   }
 }
 
-# send notification via Matrix - expects at lease two string arguments
+# send notification via Matrix - expects at least two string arguments
 :set SendMatrix do={
   :global SendMatrix2;
 
