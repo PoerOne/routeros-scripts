@@ -19,7 +19,7 @@ upgrades. Currently supported LTE hardware:
 
 ### Sample notification
 
-![check-lte-firmware-upgrade notification](check-lte-firmware-upgrade.d/notification.svg)
+![check-lte-firmware-upgrade notification](check-lte-firmware-upgrade.d/notification.avif)
 
 Requirements and installation
 -----------------------------
@@ -35,7 +35,8 @@ Just install the script:
 Configuration
 -------------
 
-Notification setting are required for e-mail,
+Also notification settings are required for
+[e-mail](mod/notification-email.md),
 [matrix](mod/notification-matrix.md) and/or
 [telegram](mod/notification-telegram.md).
 

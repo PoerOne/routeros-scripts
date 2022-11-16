@@ -19,7 +19,7 @@ configuration export (`/export terse show-sensitive`) to external server.
 
 ### Sample notification
 
-![backup-upload notification](backup-upload.d/notification.svg)
+![backup-upload notification](backup-upload.d/notification.avif)
 
 Requirements and installation
 -----------------------------
@@ -41,7 +41,8 @@ The configuration goes to `global-config-overlay`, these are the parameters:
 * `BackupUploadUser`: username for server authentication
 * `BackupUploadPass`: password for server authentication
 
-Also notification settings are required for e-mail,
+Also notification settings are required for
+[e-mail](mod/notification-email.md),
 [matrix](mod/notification-matrix.md) and/or
 [telegram](mod/notification-telegram.md).
 

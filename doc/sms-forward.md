@@ -15,7 +15,7 @@ A broadband interface with SMS support is required.
 
 ### Sample notification
 
-![sms-forward notification](sms-forward.d/notification.svg)
+![sms-forward notification](sms-forward.d/notification.avif)
 
 Requirements and installation
 -----------------------------
@@ -31,10 +31,11 @@ Just install the script:
 Configuration
 -------------
 
-Notification settings are required for e-mail,
+Notification settings are required for
+[e-mail](mod/notification-email.md),
 [matrix](mod/notification-matrix.md) and/or
-[telegram](mod/notification-telegram.md). Also you have to enable receiving
-of SMS:
+[telegram](mod/notification-telegram.md).
+Also you have to enable receiving of SMS:
 
     /tool/sms/set receive-enabled=yes;
 

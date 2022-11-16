@@ -17,6 +17,7 @@
 :global IsDNSResolving;
 :global LogPrintExit2;
 :global ParseKeyValueStore;
+:global ScriptFromTerminal;
 :global ScriptLock;
 :global SendNotification2;
 :global SymbolForNotification;
@@ -51,6 +52,8 @@
 
 $ScriptLock $0;
 
+:local ScriptFromTerminalCached [ $ScriptFromTerminal $0 ];
+
 :if ([ /system/resource/get uptime ] < 5m) do={
   $LogPrintExit2 info $0 ("System just booted, giving netwatch some time to settle.") true;
 }
@@ -69,7 +72,7 @@ $ScriptLock $0;
   :if ($HostInfo->"notify" = true && $HostInfo->"disabled" != true) do={
     :local Name [ $EitherOr ($HostInfo->"name") ($HostVal->"name") ];
 
-    :local Metric { "count-down"=0; "count-up"=0; "notified"=false };
+    :local Metric { "count-down"=0; "count-up"=0; "notified"=false; "resolve-failcnt"=0 };
     :if ([ :typeof ($NetwatchNotify->$Name) ] = "array") do={
       :set $Metric ($NetwatchNotify->$Name);
     }
@@ -84,14 +87,14 @@ $ScriptLock $0;
                  $HostInfo->"name") "" ] . "' resolves to different address " . $Resolve . \
                  ", updating.") false;
             /tool/netwatch/set host=$Resolve $Host;
-            :set ($Metric->"resolve-failed") false;
+            :set ($Metric->"resolve-failcnt") 0;
           }
         } on-error={
-          :if ($Metric->"resolve-failed" != true) do={
+          :set ($Metric->"resolve-failcnt") ($Metric->"resolve-failcnt" + 1);
+          :if ($Metric->"resolve-failcnt" = 3) do={
             $LogPrintExit2 warning $0 ("Resolving name '" . $HostInfo->"resolve" . [ $IfThenElse \
                 ($HostInfo->"resolve" != $HostInfo->"name") ("' for " . $Type . " '" . \
                 $HostInfo->"name") "" ] . "' failed.") false;
-            :set ($Metric->"resolve-failed") true;
           }
         }
       }
@@ -126,7 +129,7 @@ $ScriptLock $0;
       :set ($Metric->"count-up") 0;
       :set ($Metric->"parent") ($HostInfo->"parent");
       :set ($Metric->"since") ($HostVal->"since");
-      :local CountDown [ $IfThenElse ([ :tonum ($HostInfo->"count-down") ] > 0) ($HostInfo->"count-down") 5 ];
+      :local CountDown [ $IfThenElse ([ :tonum ($HostInfo->"count") ] > 0) ($HostInfo->"count") 5 ];
       :local Parent ($HostInfo->"parent");
       :local ParentUp false;
       :while ([ :len $Parent ] > 0) do={
@@ -143,11 +146,14 @@ $ScriptLock $0;
           :set Parent ($NetwatchNotify->$Parent->"parent");
         }
       }
-      $LogPrintExit2 [ $IfThenElse ($HostInfo->"no-down-notification" != true) info debug ] $0 \
-          ("The " . $Type . " '" . $Name . "' (" . $HostDetails . ") is down for " . \
-          $Metric->"count-down" . " checks, " . [ $IfThenElse ($ParentNotified = false) [ $IfThenElse \
-          ($Metric->"notified" = true) ("already notified.") ($CountDown - $Metric->"count-down" . \
-          " to go.") ] ("parent " . $Type . " " . $Parent . " is down.") ]) false;
+      :if ($Metric->"notified" = false || $Metric->"count-down" % 120 = 0 || \
+           $ScriptFromTerminalCached = true) do={
+        $LogPrintExit2 [ $IfThenElse ($HostInfo->"no-down-notification" != true) info debug ] $0 \
+            ("The " . $Type . " '" . $Name . "' (" . $HostDetails . ") is down for " . \
+            $Metric->"count-down" . " checks, " . [ $IfThenElse ($ParentNotified = false) [ $IfThenElse \
+            ($Metric->"notified" = true) ("already notified.") ($CountDown - $Metric->"count-down" . \
+            " to go.") ] ("parent " . $Type . " " . $Parent . " is down.") ]) false;
+      }
       :if ((($CountDown * 2) - ($Metric->"count-down" * 3)) / 2 = 0 && \
            [ :typeof ($HostInfo->"pre-down-hook") ] = "str") do={
         $NetwatchNotifyHook $Name $Type "pre-down" ($HostInfo->"pre-down-hook");
@@ -174,7 +180,7 @@ $ScriptLock $0;
       "count-up"=($Metric->"count-up");
       "notified"=($Metric->"notified");
       "parent"=($Metric->"parent");
-      "resolve-failed"=($Metric->"resolve-failed");
+      "resolve-failcnt"=($Metric->"resolve-failcnt");
       "since"=($Metric->"since") };
   }
 }

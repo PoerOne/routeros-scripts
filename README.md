@@ -92,7 +92,7 @@ Now let's download the main scripts and add them in configuration on the fly.
 ![screenshot: import scripts](README.d/04-import-scripts.avif)
 
 The configuration needs to be tweaked for your needs. Edit
-`global-config-overlay`, copy configuration from
+`global-config-overlay`, copy relevant configuration from
 [`global-config`](global-config) (the one without `-overlay`).
 Save changes and exit with `Ctrl-o`.
 
@@ -127,7 +127,7 @@ everything is up-to-date it will not produce any output.
 If the update includes news or requires configuration changes a notification
 is sent - in addition to terminal output and log messages.
 
-![news and changes notification](README.d/news-and-changes-notification.svg)
+![news and changes notification](README.d/news-and-changes-notification.avif)
 
 Adding a script
 ---------------
@@ -195,7 +195,6 @@ Available scripts
 * [Mode button with multiple presses](doc/mode-button.md)
 * [Manage DNS and DoH servers from netwatch](doc/netwatch-dns.md)
 * [Notify on host up and down](doc/netwatch-notify.md)
-* [Manage remote logging](doc/netwatch-syslog.md)
 * [Visualize OSPF state via LEDs](doc/ospf-to-leds.md)
 * [Manage system update](doc/packages-update.md)
 * [Run scripts on ppp connection](doc/ppp-on-up.md)
@@ -207,10 +206,6 @@ Available scripts
 * [Update GRE configuration with dynamic addresses](doc/update-gre-address.md)
 * [Update tunnelbroker configuration](doc/update-tunnelbroker.md)
 
-[comment]: # (TODO: currently undocumented)
-[comment]: # (* learn-mac-based-vlan)
-[comment]: # (* manage-umts)
-
 Available modules
 -----------------
 
@@ -218,6 +213,7 @@ Available modules
 * [Manage VLANs on bridge ports](doc/mod/bridge-port-vlan.md)
 * [Inspect variables](doc/mod/inspectvar.md)
 * [IP address calculation](doc/mod/ipcalc.md)
+* [Send notifications via e-mail](doc/mod/notification-email.md)
 * [Send notifications via Matrix](doc/mod/notification-matrix.md)
 * [Send notifications via Telegram](doc/mod/notification-telegram.md)
 * [Download script and run it once](doc/mod/scriptrunonce.md)
