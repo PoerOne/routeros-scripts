@@ -1,7 +1,7 @@
 Initial commands
 ================
 
-[◀ Go back to main README](README.md)
+[⬅️ Go back to main README](README.md)
 
 > ⚠️ **Warning**: These command are inteneded for initial setup. If you are
 > not aware of the procedure please follow
@@ -19,7 +19,7 @@ Run the complete base installation:
       /file/remove "letsencrypt-R3.pem";
       :delay 1s;
       :foreach Script in={ "global-config"; "global-config-overlay"; "global-functions" } do={
-        /system/script/add name=$Script source=([ /tool/fetch check-certificate=yes-without-crl ("https://git.eworm.de/cgit/routeros-scripts/plain/" . $Script) output=user as-value]->"data");
+        /system/script/add name=$Script source=([ /tool/fetch check-certificate=yes-without-crl ("https://git.eworm.de/cgit/routeros-scripts/plain/" . $Script . ".rsc") output=user as-value]->"data");
       };
       /system/script { run global-config; run global-functions; };
       /system/scheduler/add name="global-scripts" start-time=startup on-event="/system/script { run global-config; run global-functions; }";
@@ -28,10 +28,10 @@ Run the complete base installation:
       $CertificateNameByCN "ISRG Root X1";
     };
 
-Optional to update the scripts automatically:
-
-    /system/scheduler/add name="ScriptInstallUpdate" start-time=startup interval=1d on-event=":global ScriptInstallUpdate; \$ScriptInstallUpdate;";
+Then continue setup with
+[scheduled automatic updates](README.md#scheduled-automatic-updates) or
+[editing configuration](README.md#editing-configuration).
 
 ---
-[◀ Go back to main README](README.md)  
-[▲ Go back to top](#top)
+[⬅️ Go back to main README](README.md)  
+[⬆️ Go back to top](#top)

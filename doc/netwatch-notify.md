@@ -1,7 +1,7 @@
 Notify on host up and down
 ==========================
 
-[◀ Go back to main README](../README.md)
+[⬅️ Go back to main README](../README.md)
 
 > ℹ️ **Info**: This script can not be used on its own but requires the base
 > installation. See [main README](../README.md) for details.
@@ -38,6 +38,11 @@ The hosts to be checked have to be added to netwatch with specific comment:
 
     /tool/netwatch/add comment="notify, name=example.com" host=[ :resolve "example.com" ];
 
+Also notification settings are required for
+[e-mail](mod/notification-email.md),
+[matrix](mod/notification-matrix.md) and/or
+[telegram](mod/notification-telegram.md).
+
 ### Hooks
 
 It is possible to run an up hook command (`up-hook`) or down hook command
@@ -49,6 +54,9 @@ comment, note that some characters need extra escaping:
 Also there is a `pre-down-hook` that fires at two thirds of failed checks
 required for the notification. The idea is to fix the issue before a
 notification is sent.
+
+Getting the escaping right may be troublesome. Please consider adding a
+script in `/system/script`, then running that from hook.
 
 ### Count threshould
 
@@ -88,10 +96,12 @@ powered off, but accessibility is of interest.
 
 Go and get your coffee ☕️ before sending the print job.
 
-Also notification settings are required for
-[e-mail](mod/notification-email.md),
-[matrix](mod/notification-matrix.md) and/or
-[telegram](mod/notification-telegram.md).
+### Add a note in notification
+
+For some extra information it is possible to add a text note. This is
+included verbatim into the notification.
+
+    /tool/netwatch/add comment="notify, name=example, note=Do not touch!" host=10.0.0.31;
 
 Tips & Tricks
 -------------
@@ -151,5 +161,5 @@ See also
 * [Manage DNS and DoH servers from netwatch](netwatch-dns.md)
 
 ---
-[◀ Go back to main README](../README.md)  
-[▲ Go back to top](#top)
+[⬅️ Go back to main README](../README.md)  
+[⬆️ Go back to top](#top)

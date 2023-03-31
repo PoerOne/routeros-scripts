@@ -1,9 +1,9 @@
 RouterOS Scripts
 ================
 
-[![GitHub stars](https://img.shields.io/github/stars/eworm-de/routeros-scripts?style=social)](https://github.com/eworm-de/routeros-scripts/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/eworm-de/routeros-scripts?style=social)](https://github.com/eworm-de/routeros-scripts/network)
-[![GitHub watchers](https://img.shields.io/github/watchers/eworm-de/routeros-scripts?style=social)](https://github.com/eworm-de/routeros-scripts/watchers)
+[![GitHub stars](https://img.shields.io/github/stars/eworm-de/routeros-scripts?logo=GitHub&style=flat&color=red)](https://github.com/eworm-de/routeros-scripts/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/eworm-de/routeros-scripts?logo=GitHub&style=flat&color=green)](https://github.com/eworm-de/routeros-scripts/network)
+[![GitHub watchers](https://img.shields.io/github/watchers/eworm-de/routeros-scripts?logo=GitHub&style=flat&color=blue)](https://github.com/eworm-de/routeros-scripts/watchers)
 
 ![RouterOS Scripts Logo](logo.svg)
 
@@ -87,32 +87,51 @@ date and time is set correctly!
 
 Now let's download the main scripts and add them in configuration on the fly.
 
-    :foreach Script in={ "global-config"; "global-config-overlay"; "global-functions" } do={ /system/script/add name=$Script source=([ /tool/fetch check-certificate=yes-without-crl ("https://git.eworm.de/cgit/routeros-scripts/plain/" . $Script) output=user as-value]->"data"); };
+    :foreach Script in={ "global-config"; "global-config-overlay"; "global-functions" } do={ /system/script/add name=$Script source=([ /tool/fetch check-certificate=yes-without-crl ("https://git.eworm.de/cgit/routeros-scripts/plain/" . $Script . ".rsc") output=user as-value]->"data"); };
 
 ![screenshot: import scripts](README.d/04-import-scripts.avif)
-
-The configuration needs to be tweaked for your needs. Edit
-`global-config-overlay`, copy relevant configuration from
-[`global-config`](global-config) (the one without `-overlay`).
-Save changes and exit with `Ctrl-o`.
-
-    /system/script edit global-config-overlay source;
-
-![screenshot: edit global-config-overlay](README.d/05-edit-global-config-overlay.avif)
 
 And finally load configuration and functions and add the scheduler.
 
     /system/script { run global-config; run global-functions; };
     /system/scheduler/add name="global-scripts" start-time=startup on-event="/system/script { run global-config; run global-functions; }";
 
-![screenshot: run and schedule scripts](README.d/06-run-and-schedule-scripts.avif)
+![screenshot: run and schedule scripts](README.d/05-run-and-schedule-scripts.avif)
 
-The last step is optional: Add this scheduler **only** if you want the scripts
-to be updated automatically!
+### Scheduled automatic updates
+
+The last step is optional: Add this scheduler **only** if you want the
+scripts to be updated automatically!
 
     /system/scheduler/add name="ScriptInstallUpdate" start-time=startup interval=1d on-event=":global ScriptInstallUpdate; \$ScriptInstallUpdate;";
 
-![screenshot: schedule update](README.d/07-schedule-update.avif)
+![screenshot: schedule update](README.d/06-schedule-update.avif)
+
+Editing configuration
+---------------------
+
+The configuration needs to be tweaked for your needs. Edit
+`global-config-overlay`, copy relevant configuration from
+[`global-config`](global-config.rsc) (the one without `-overlay`).
+Save changes and exit with `Ctrl-o`.
+
+    /system/script/edit global-config-overlay source;
+
+![screenshot: edit global-config-overlay](README.d/07-edit-global-config-overlay.avif)
+
+To apply your changes run `global-config`, which will automatically load
+the overlay as well:
+
+    /system/script/run global-config;
+
+![screenshot: apply configuration](README.d/08-apply-configuration.avif)
+
+This last step is required when ever you make changes to your configuration.
+
+> ℹ️ **Info**: It is recommended to edit the configuration using the command
+> line interface. If using Winbox on Windows OS, the line endings may be
+> missing. To fix this run:
+> `/system/script/set source=[ $Unix2Dos [ get global-config-overlay source ] ] global-config-overlay;`
 
 Updating scripts
 ----------------
@@ -122,12 +141,12 @@ everything is up-to-date it will not produce any output.
 
     $ScriptInstallUpdate;
 
-![screenshot: update scripts](README.d/08-update-scripts.avif)
+![screenshot: update scripts](README.d/09-update-scripts.avif)
 
 If the update includes news or requires configuration changes a notification
 is sent - in addition to terminal output and log messages.
 
-![news and changes notification](README.d/news-and-changes-notification.avif)
+![news and changes notification](README.d/notification-news-and-changes.avif)
 
 Adding a script
 ---------------
@@ -137,7 +156,7 @@ a comma separated list of script names.
 
     $ScriptInstallUpdate check-certificates,check-routeros-update;
 
-![screenshot: install scripts](README.d/09-install-scripts.avif)
+![screenshot: install scripts](README.d/10-install-scripts.avif)
 
 Scheduler and events
 --------------------
@@ -149,7 +168,7 @@ miss an update.
 
     /system/scheduler/add name="check-routeros-update" interval=1h on-event="/system/script/run check-routeros-update;";
 
-![screenshot: schedule script](README.d/10-schedule-script.avif)
+![screenshot: schedule script](README.d/11-schedule-script.avif)
 
 Some events can run a script. If you want your DHCP hostnames to be available
 in DNS use `dhcp-to-dns` with the events from dhcp server. For a regular
@@ -159,7 +178,7 @@ cleanup add a scheduler entry.
     /ip/dhcp-server/set lease-script=lease-script [ find ];
     /system/scheduler/add name="dhcp-to-dns" interval=5m on-event="/system/script/run dhcp-to-dns;";
 
-![screenshot: setup lease script](README.d/11-setup-lease-script.avif)
+![screenshot: setup lease script](README.d/12-setup-lease-script.avif)
 
 There's much more to explore... Have fun!
 
@@ -202,6 +221,7 @@ Available scripts
 * [Forward received SMS](doc/sms-forward.md)
 * [Import SSH keys](doc/ssh-keys-import.md)
 * [Play Super Mario theme](doc/super-mario-theme.md)
+* [Chat with your router and send commands via Telegram bot](doc/telegram-chat.md)
 * [Install LTE firmware upgrade](doc/unattended-lte-firmware-upgrade.md)
 * [Update GRE configuration with dynamic addresses](doc/update-gre-address.md)
 * [Update tunnelbroker configuration](doc/update-tunnelbroker.md)
@@ -227,12 +247,9 @@ still use my scripts to manage and deploy yours, by specifying `base-url`
 
 This will fetch and install a script `hello-world.rsc` from the given url:
 
-    $ScriptInstallUpdate hello-world.rsc "base-url=https://git.eworm.de/cgit/routeros-scripts/plain/README.d/";
+    $ScriptInstallUpdate hello-world "base-url=https://git.eworm.de/cgit/routeros-scripts-custom/plain/";
 
-![screenshot: install custom script](README.d/12-install-custom-script.avif)
-
-(Yes, the example url still belongs to the repository for easy
-handling - but the url can be what ever you use.)
+![screenshot: install custom script](README.d/13-install-custom-script.avif)
 
 For a script to be considered valid it has to begin with a *magic token*.
 Have a look at [any script](README.d/hello-world.rsc) and copy the first line
@@ -240,6 +257,26 @@ without modification.
 
 Starting a script's name with `mod/` makes it a module and it is run
 automatically by `global-functions`.
+
+### Linked custom scripts & modules
+
+> ⚠️ **Warning**: These links are being provided for your convenience only;
+> they do not constitute an endorsement or an approval by me. I bear no
+> responsibility for the accuracy, legality or content of the external site
+> or for that of subsequent links. Contact the external site for answers to
+> questions regarding its content.
+
+* [Hello World](https://git.eworm.de/cgit/routeros-scripts-custom/about/doc/hello-world.md)
+  (This is a demo script to show how the linking to external documentation
+  will be done.)
+
+> ℹ️ **Info**: You have your own set of scripts and/or modules and want these
+> to be listed here? There should be a general info page that links here,
+> and documentation for each script. You can start by cloning my
+> [Custom RouterOS-Scripts](https://git.eworm.de/cgit/routeros-scripts-custom/)
+> (or fork on [GitHub](https://github.com/eworm-de/routeros-scripts-custom)
+> or [GitLab](https://gitlab.com/eworm-de/routeros-scripts-custom)) and make
+> your changes. Then please [get in contact](#patches-issues-and-whishlist)...
 
 Removing a script
 -----------------
@@ -249,7 +286,7 @@ configuration...
 
     /system/script/remove to-be-removed;
 
-![screenshot: remove script](README.d/13-remove-script.avif)
+![screenshot: remove script](README.d/14-remove-script.avif)
 
 Possibly a scheduler and other configuration has to be removed as well.
 
@@ -271,7 +308,9 @@ Thanks a lot for [past contributions](CONTRIBUTIONS.md)! ❤️
 ### Patches, issues and whishlist
 
 Feel free to contact me via e-mail or open an
-[issue at github](https://github.com/eworm-de/routeros-scripts/issues).
+[issue](https://github.com/eworm-de/routeros-scripts/issues) or
+[pull request](https://github.com/eworm-de/routeros-scripts/pulls)
+at github.
 
 ### Donate
 
@@ -308,4 +347,4 @@ Mirror:
 [GitLab.com](https://gitlab.com/eworm-de/routeros-scripts#routeros-scripts)
 
 ---
-[▲ Go back to top](#top)
+[⬆️ Go back to top](#top)

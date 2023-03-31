@@ -1,7 +1,7 @@
 Notify about health state
 =========================
 
-[◀ Go back to main README](../README.md)
+[⬅️ Go back to main README](../README.md)
 
 > ℹ️ **Info**: This script can not be used on its own but requires the base
 > installation. See [main README](../README.md) for details.
@@ -12,32 +12,46 @@ Description
 This script is run from scheduler periodically, sending notification on
 health related events:
 
-* voltage jumps up or down more than configured threshold or drops below limit
+* high CPU utilization
+* low available free RAM
+* voltage jumps up or down more than configured threshold
+* voltage drops below hard lower limit
 * power supply failed or recovered
 * temperature is above or below threshold
 
 Note that bad initial state will not trigger an event.
 
-Only sensors available in hardware can be checked. See what your
-hardware supports:
+Monitoring CPU utilization and available free RAM works on all devices.
+Other than that only sensors available in hardware can be checked. See what
+your hardware supports:
 
     /system/health/print;
 
 ### Sample notifications
 
+#### CPU utilization
+
+![check-health notification cpu utilization high](check-health.d/notification-01-cpu-utilization-high.avif)  
+![check-health notification cpu utilization ok](check-health.d/notification-02-cpu-utilization-ok.avif)
+
+#### Available free RAM
+
+![check-health notification free ram low](check-health.d/notification-03-free-ram-low.avif)  
+![check-health notification free ram ok](check-health.d/notification-04-free-ram-ok.avif)
+
 #### Voltage
 
-![check-health notification voltage](check-health.d/notification-01-voltage.avif)
+![check-health notification voltage](check-health.d/notification-05-voltage.avif)
 
 #### Temperature
 
-![check-health notification](check-health.d/notification-02-temperature-high.avif)  
-![check-health notification](check-health.d/notification-03-temperature-ok.avif)
+![check-health notification temperature high](check-health.d/notification-06-temperature-high.avif)  
+![check-health notification temperature ok](check-health.d/notification-07-temperature-ok.avif)
 
 #### PSU state
 
-![check-health notification](check-health.d/notification-04-psu-fail.avif)  
-![check-health notification](check-health.d/notification-05-psu-ok.avif)
+![check-health notification psu fail](check-health.d/notification-08-psu-fail.avif)  
+![check-health notification psu ok](check-health.d/notification-09-psu-ok.avif)
 
 Requirements and installation
 -----------------------------
@@ -62,5 +76,5 @@ Also notification settings are required for
 [telegram](mod/notification-telegram.md).
 
 ---
-[◀ Go back to main README](../README.md)  
-[▲ Go back to top](#top)
+[⬅️ Go back to main README](../README.md)  
+[⬆️ Go back to top](#top)

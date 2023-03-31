@@ -1,5 +1,5 @@
 # News, changes and migration by RouterOS Scripts
-# Copyright (c) 2019-2022 Christian Hesse <mail@eworm.de>
+# Copyright (c) 2019-2023 Christian Hesse <mail@eworm.de>
 # https://git.eworm.de/cgit/routeros-scripts/about/COPYING.md
 
 :global IfThenElse;
@@ -94,6 +94,16 @@
   83="Introduced new setting to disable news and change notifications, dropped version from configuration.";
   84="Support for e-mail notifications moved to a module. It is installed automatically if required.";
   85="Dropped 'netwatch-syslog', filtering in firewall is advised.";
+  86="Added support for hooks in 'sms-forward'. This now provides similar functionality to 'sms-action', but is more flexible.";
+  87="Added support for extra text (or emojis \F0\9F\9A\80) in notification tags.";
+  88="Added support for monitoring CPU utilization and available free RAM in 'check-health'.";
+  89="Made the warning time for 'check-certificates' configurable.";
+  90="Chat with your router! Introduced 'telegram-chat' to chat via Telegram bot and send commands to your router.";
+  91="Dropped check for CAP in 'check-routeros-update' to solve issues with wifiwave2 package.";
+  92="Made qr-code url configurable for 'daily-psk'.";
+  93="Added support to backup global-config-overlay in 'backup-email' and 'backup-upload'.";
+  94="Added support for host addresses in address-list for 'ipv6-update'.";
+  95="Renamed script files in repository, running migration. Warnings (one per script) are expected, no user interaction is required.";
 };
 
 # Migration steps to be applied on script updates
@@ -109,4 +119,5 @@
   81=":global NtpPool; :if ([ :len [ /system/script/find where name=\"rotate-ntp\" ] ] > 0) do={ /system/script/remove [ find where name=\"rotate-ntp\" ]; /system/scheduler/remove [ find where name=\"rotate-ntp\" ]; /system/ntp/client/set servers=\$NtpPool; };";
   82=":global CharacterReplace; :foreach Netwatch in=[ /tool/netwatch/find where comment~\"notify\" !disabled ] do={ /tool/netwatch/set \$Netwatch comment=[ \$CharacterReplace [ get \$Netwatch comment ] \"hostname=\" \"name=\" ]; };";
   84=":global ScriptInstallUpdate; :global EmailGeneralTo; :if ([ /tool/e-mail/get address ] != \"0.0.0.0\" && [ :len \$EmailGeneralTo ] > 0) do={ \$ScriptInstallUpdate mod/notification-email; }";
+  95=":global ScriptInstallUpdate; :global CharacterReplace; :foreach Script in=[ /system/script/find where name~\"\\\\.rsc\\\$\" source~\"^#!rsc by RouterOS\\n\" ] do={ /system/script/set \$Script name=[ \$CharacterReplace [ get \$Script name ] \".rsc\" \"\" ]; }; \$ScriptInstallUpdate;";
 };

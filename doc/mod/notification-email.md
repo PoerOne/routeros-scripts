@@ -1,7 +1,7 @@
 Send notifications via e-mail
 =============================
 
-[◀ Go back to main README](../../README.md)
+[⬅️ Go back to main README](../../README.md)
 
 > ℹ️️ **Info**: This module can not be used on its own but requires the base
 > installation. See [main README](../../README.md) for details.
@@ -26,6 +26,8 @@ Configuration
 
 Set up your device's
 [e-mail settings](https://wiki.mikrotik.com/wiki/Manual:Tools/email).
+Also make sure the device has correct time configured, best is to set up
+the ntp client.
 
 Then edit `global-config-overlay`, add `EmailGeneralTo` with a valid
 recipient address. Finally reload the configuration.
@@ -59,5 +61,5 @@ See also
 * [Send notifications via Telegram](notification-telegram.md)
 
 ---
-[◀ Go back to main README](../../README.md)  
-[▲ Go back to top](#top)
+[⬅️ Go back to main README](../../README.md)  
+[⬆️ Go back to top](#top)

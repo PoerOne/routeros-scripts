@@ -1,7 +1,7 @@
 Download script and run it once
 ===============================
 
-[◀ Go back to main README](../../README.md)
+[⬅️ Go back to main README](../../README.md)
 
 > ℹ️️ **Info**: This module can not be used on its own but requires the base
 > installation. See [main README](../../README.md) for details.
@@ -28,8 +28,8 @@ The optional configuration goes to `global-config-overlay`.
 * `ScriptRunOnceUrlSuffix`: url suffix, appended to parameter
 
 If the parameter passed to the function is not a complete URL (starting
-with protocol `ftp://`, `http://`, `https://` or `sftp://`) the values are
-prepended and appended.
+with protocol `ftp://`, `http://`, `https://` or `sftp://`) the base-url is
+prepended, and file extension `.rsc` and url-suffix are appended.
 
 Usage and invocation
 --------------------
@@ -44,5 +44,5 @@ The function `$ScriptRunOnce` expects an URL (or name if
 Giving multiple scripts is possible, separated by comma.
 
 ---
-[◀ Go back to main README](../../README.md)  
-[▲ Go back to top](#top)
+[⬅️ Go back to main README](../../README.md)  
+[⬆️ Go back to top](#top)

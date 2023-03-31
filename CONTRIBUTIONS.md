@@ -1,7 +1,7 @@
 Past Contributions
 ==================
 
-[◀ Go back to main README](README.md)
+[⬅️ Go back to main README](README.md)
 
 Thanks a lot for your contributions! ❤️
 
@@ -10,6 +10,7 @@ Thanks a lot for your contributions! ❤️
 These persons contributed code or documentation. See the git history
 for details!
 
+* [Anatoly Bubenkov](mailto:bubenkoff@gmail.com) (@bubenkoff)
 * [Ben Harris](mailto:mail@bharr.is) (@bharrisau)
 * [Daniel Ziegenberg](mailto:daniel@ziegenberg.at) (@ziegenberg)
 * [Michael Gisbers](mailto:michael@gisbers.de) (@mgisbers)
@@ -27,6 +28,7 @@ Add yourself to the list,
 * Christoph Boss (@Kampfwurst)
 * Devin Dean (@dd2594gh)
 * Evaldo Gardenal
+* Hugo BV
 * Klaus Michael Rübsam
 * Linux-Schmie.de Michael Gisbers
 * Manuel Kuhn
@@ -40,5 +42,5 @@ Add yourself to the list,
 * Zac Kornilakis
 
 ---
-[◀ Go back to main README](README.md)  
-[▲ Go back to top](#top)
+[⬅️ Go back to main README](README.md)  
+[⬆️ Go back to top](#top)
