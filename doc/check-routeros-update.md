@@ -52,14 +52,17 @@ The configuration goes to `global-config-overlay`, these are the parameters:
 
 * `SafeUpdateNeighbor`: install updates automatically if at least one other
   device is seen in neighbor list with new version
+* `SafeUpdateNeighborIdentity`: regular expression to match identity for
+  trusted devices, leave empty to match all
 * `SafeUpdatePatch`: install patch updates (where just last digit changes)
   automatically
 * `SafeUpdateUrl`: url on webserver to check for safe update, the channel
   (`long-term`, `stable` or `testing`) is appended
 * `SafeUpdateAll`: install **all** updates automatically
 
-> ℹ️ **Info**: Installing **all** updates automatically requires extra
-> confirmation. See `global-config` for details.
+> ℹ️ **Info**: Copy relevant configuration from
+> [`global-config`](../global-config.rsc) (the one without `-overlay`) to
+> your local `global-config-overlay` and modify it to your specific needs.
 
 Also notification settings are required for
 [e-mail](mod/notification-email.md),
@@ -76,6 +79,14 @@ Be notified when run from scheduler or run it manually:
 If an update is found you can install it right away.
 
 Installing script [packages-update](packages-update.md) gives extra options.
+
+Tips & Tricks
+-------------
+
+The script checks for full connectivity before acting, so scheduling at
+startup is perfectly valid:
+
+    /system/scheduler/add name=check-routeros-update@startup on-event="/system/script/run check-routeros-update;" start-time=startup;
 
 See also
 --------

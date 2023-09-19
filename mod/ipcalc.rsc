@@ -2,6 +2,9 @@
 # RouterOS script: mod/ipcalc
 # Copyright (c) 2020-2023 Christian Hesse <mail@eworm.de>
 # https://git.eworm.de/cgit/routeros-scripts/about/COPYING.md
+#
+# ip address calculation
+# https://git.eworm.de/cgit/routeros-scripts/about/doc/mod/ipcalc.md
 
 :global IPCalc;
 :global IPCalcReturn;
@@ -10,18 +13,19 @@
 :set IPCalc do={
   :local Input [ :tostr $1 ];
 
+  :global FormatLine;
   :global IPCalcReturn;
   :global PrettyPrint;
 
   :local Values [ $IPCalcReturn $1 ];
 
   $PrettyPrint ( \
-    "Address:   " . $Values->"address" . "\n" . \
-    "Netmask:   " . $Values->"netmask" . "\n" . \
-    "Network:   " . $Values->"network" . "\n" . \
-    "HostMin:   " . $Values->"hostmin" . "\n" . \
-    "HostMax:   " . $Values->"hostmax" . "\n" . \
-    "Broadcast: " . $Values->"broadcast");
+    [ $FormatLine "Address" ($Values->"address") ] . "\n" . \
+    [ $FormatLine "Netmask" ($Values->"netmask") ] . "\n" . \
+    [ $FormatLine "Network" ($Values->"network") ] . "\n" . \
+    [ $FormatLine "HostMin" ($Values->"hostmin") ] . "\n" . \
+    [ $FormatLine "HostMax" ($Values->"hostmax") ] . "\n" . \
+    [ $FormatLine "Broadcast" ($Values->"broadcast") ]);
 }
 
 # calculate and return netmask, network, min host, max host and broadcast

@@ -12,11 +12,9 @@
 # Add extra text (or emojis) in notification tags.
 :global IdentityExtra "";
 
-# This is used for DNS and backup file.
+# This is used in DNS scripts ('ipsec-to-dns' and fallback in 'dhcp-to-dns')
+# and backup scripts for file names.
 :global Domain "example.com";
-:global HostNameInZone true;
-:global PrefixInZone true;
-:global ServerNameInZone false;
 
 # You can send e-mail notifications. Configure the system's mail settings
 # (/tool/e-mail), then install the module:
@@ -82,6 +80,29 @@
 :global BackupUploadUser "mikrotik";
 :global BackupUploadPass "v3ry-s3cr3t";
 
+# This defines the settings for firewall address-lists (fw-addr-lists).
+:global FwAddrLists {
+#  "allow"={
+#    { url="https://eworm.de/ros/fw-addr-lists/allow";
+#      cert="R3" };
+#  };
+  "block"={
+#    { url="https://eworm.de/ros/fw-addr-lists/block";
+#      cert="R3" };
+    { url="https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.txt";
+      cert="GlobalSign Atlas R3 DV TLS CA 2022 Q3" };
+    { url="https://sslbl.abuse.ch/blacklist/sslipblacklist.txt";
+      cert="GlobalSign Atlas R3 DV TLS CA 2022 Q3" };
+    { url="https://www.dshield.org/block.txt"; cidr="/24";
+      cert="R3" };
+#    { url="https://www.spamhaus.org/drop/drop.txt";
+#      cert="Cloudflare Inc ECC CA-3" };
+#    { url="https://www.spamhaus.org/drop/edrop.txt";
+#      cert="Cloudflare Inc ECC CA-3" };
+  };
+};
+:global FwAddrListTimeOut 1d;
+
 # This defines what log messages to filter or include by topic or message
 # text. Regular expressions are supported. Do *NOT* set an empty string,
 # that will filter or include everything!
@@ -105,6 +126,7 @@
 :global SafeUpdatePatch false;
 # Allow to install updates automatically if seen in neighbor list.
 :global SafeUpdateNeighbor false;
+:global SafeUpdateNeighborIdentity "";
 # Install *ALL* updates automatically!
 # Set to all upper-case "Yes, please!" to enable.
 :global SafeUpdateAll "no";
@@ -116,7 +138,7 @@
   cpu-temperature=70;
   board-temperature1=50;
   board-temperature2=50;
-}
+};
 # This is deviation on recovery threshold against notification flooding.
 :global CheckHealthTemperatureDeviation 3;
 :global CheckHealthVoltageLow 115;
@@ -139,7 +161,11 @@
     "Staking"; "Thundering"; "Ultra"; "Unreal" };
   { "Belief"; "Button"; "Curtain"; "Edge"; "Jewel";
     "String"; "Whistle" }
-}
+};
+
+# Specify how to assemble DNS names in ipsec-to-dns.
+:global HostNameInZone true;
+:global PrefixInZone true;
 
 # Run different commands with multiple mode-button presses.
 :global ModeButton {
@@ -182,7 +208,7 @@
 #:global ScriptUpdatesBaseUrl "https://gitlab.com/eworm-de/routeros-scripts/raw/next/";
 :global ScriptUpdatesUrlSuffix "";
 # use next branch with default url (git.eworm.de)
-#:global ScriptUpdatesUrlSuffix "\?h=next";
+#:global ScriptUpdatesUrlSuffix "?h=next";
 
 # Use this for defaults with $ScriptRunOnce
 # Install module with:
@@ -204,12 +230,12 @@
 :global CertRenewPass {
   "v3ry-s3cr3t";
   "4n0th3r-s3cr3t";
-}
+};
 :global CertWarnTime 2w;
 :global CertIssuedExportPass {
   "cert1-cn"="v3ry-s3cr3t";
   "cert2-cn"="4n0th3r-s3cr3t";
-}
+};
 
 # load custom settings from overlay
 # Warning: Do *NOT* copy this code to overlay!

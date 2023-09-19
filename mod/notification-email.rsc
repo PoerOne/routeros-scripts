@@ -2,11 +2,15 @@
 # RouterOS script: mod/notification-email
 # Copyright (c) 2013-2023 Christian Hesse <mail@eworm.de>
 # https://git.eworm.de/cgit/routeros-scripts/about/COPYING.md
+#
+# send notifications via e-mail
+# https://git.eworm.de/cgit/routeros-scripts/about/doc/mod/notification-email.md
 
 :global FlushEmailQueue;
 :global LogForwardFilterLogForwarding;
 :global NotificationEMailSubject;
 :global NotificationFunctions;
+:global PurgeEMailQueue;
 :global QuotedPrintable;
 :global SendEMail;
 :global SendEMail2;
@@ -153,6 +157,14 @@
   }
 }
 
+# purge the e-mail queue
+:set PurgeEMailQueue do={
+  :global EmailQueue;
+
+  /system/scheduler/remove [ find where name="\$FlushEmailQueue" ];
+  :set EmailQueue;
+}
+
 # convert string to quoted-printable
 :global QuotedPrintable do={
   :local Input [ :tostr $1 ];
@@ -186,7 +198,7 @@
     :return $Input;
   }
 
-  :return ("=\?utf-8\?Q\?" . $Return . "\?=");
+  :return ("=?utf-8?Q?" . $Return . "?=");
 }
 
 # send notification via e-mail - expects at least two string arguments

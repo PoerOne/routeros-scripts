@@ -3,9 +3,13 @@
 # Copyright (c) 2013-2023 Michael Gisbers <michael@gisbers.de>
 #                         Christian Hesse <mail@eworm.de>
 # https://git.eworm.de/cgit/routeros-scripts/about/COPYING.md
+#
+# send notifications via Matrix
+# https://git.eworm.de/cgit/routeros-scripts/about/doc/mod/notification-matrix.md
 
 :global FlushMatrixQueue;
 :global NotificationFunctions;
+:global PurgeMatrixQueue;
 :global SendMatrix;
 :global SendMatrix2;
 
@@ -146,6 +150,14 @@
         on-event=(":global FlushMatrixQueue; \$FlushMatrixQueue;");
     }
   }
+}
+
+# purge the Matrix queue
+:set PurgeMatrixQueue do={
+  :global MatrixQueue;
+
+  /system/scheduler/remove [ find where name="\$FlushMatrixQueue" ];
+  :set MatrixQueue;
 }
 
 # send notification via Matrix - expects at least two string arguments

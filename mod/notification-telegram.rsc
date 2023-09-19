@@ -2,9 +2,13 @@
 # RouterOS script: mod/notification-telegram
 # Copyright (c) 2013-2023 Christian Hesse <mail@eworm.de>
 # https://git.eworm.de/cgit/routeros-scripts/about/COPYING.md
+#
+# send notifications via Telegram
+# https://git.eworm.de/cgit/routeros-scripts/about/doc/mod/notification-telegram.md
 
 :global FlushTelegramQueue;
 :global NotificationFunctions;
+:global PurgeTelegramQueue;
 :global SendTelegram;
 :global SendTelegram2;
 
@@ -34,7 +38,7 @@
           ("https://api.telegram.org/bot" . ($Message->"tokenid") . "/sendMessage") \
           http-data=("chat_id=" . ($Message->"chatid") . \
           "&disable_notification=" . ($Message->"silent") . \
-          "&reply_to_message_id=" . ($Notification->"replyto") . \
+          "&reply_to_message_id=" . ($Message->"replyto") . \
           "&disable_web_page_preview=true&parse_mode=" . ($Message->"parsemode") . \
           "&text=" . ($Message->"text")) as-value;
         :set ($TelegramQueue->$Id);
@@ -157,6 +161,14 @@
         on-event=(":global FlushTelegramQueue; \$FlushTelegramQueue;");
     }
   }
+}
+
+# purge the Telegram queue
+:set PurgeTelegramQueue do={
+  :global TelegramQueue;
+
+  /system/scheduler/remove [ find where name="\$FlushTelegramQueue" ];
+  :set TelegramQueue;
 }
 
 # send notification via telegram - expects at least two string arguments

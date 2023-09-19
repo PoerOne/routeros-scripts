@@ -13,10 +13,7 @@
 :while ($GlobalFunctionsReady != true) do={ :delay 500ms; }
 
 :global Domain;
-:global HostNameInZone;
 :global Identity;
-:global PrefixInZone;
-:global ServerNameInZone;
 
 :global CharacterReplace;
 :global EitherOr;
@@ -27,9 +24,6 @@
 
 $ScriptLock $0 false 10;
 
-:local Zone \
-  ([ $IfThenElse ($PrefixInZone = true) "dhcp." ] . \
-   [ $IfThenElse ($HostNameInZone = true) ($Identity . ".") ] . $Domain);
 :local Ttl 5m;
 :local CommentPrefix ("managed by " . $0 . " for ");
 :local CommentString ("--- " . $0 . " above ---");
@@ -43,13 +37,13 @@ $ScriptLock $0 false 10;
 :foreach DnsRecord in=[ /ip/dns/static/find where comment~("^" . $CommentPrefix) (!type or type=A) ] do={
   :local DnsRecordVal [ /ip/dns/static/get $DnsRecord ];
   :local MacAddress [ $CharacterReplace ($DnsRecordVal->"comment") $CommentPrefix "" ];
-  :if ([ :len [ /ip/dhcp-server/lease/find where mac-address=$MacAddress address=($DnsRecordVal->"address") status=bound ] ] > 0) do={
+  :if ([ :len [ /ip/dhcp-server/lease/find where active-mac-address=$MacAddress active-address=($DnsRecordVal->"address") status=bound ] ] > 0) do={
     $LogPrintExit2 debug $0 ("Lease for " . $MacAddress . " (" . $DnsRecordVal->"name" . ") still exists. Not deleting DNS entry.") false;
   } else={
     :local Found false;
     $LogPrintExit2 info $0 ("Lease expired for " . $MacAddress . " (" . $DnsRecordVal->"name" . "), deleting DNS entry.") false;
     /ip/dns/static/remove $DnsRecord;
-    /ip/dns/static/remove [ find where type=CNAME cname=($DnsRecordVal->"name") comment=($DnsRecordVal->"comment") ];
+    /ip/dns/static/remove [ find where type=CNAME comment=($DnsRecordVal->"comment") ];
   }
 }
 
@@ -57,47 +51,54 @@ $ScriptLock $0 false 10;
   :local LeaseVal;
   :do {
     :set LeaseVal [ /ip/dhcp-server/lease/get $Lease ];
+    :local DupMacLeases [ /ip/dhcp-server/lease/find where active-mac-address=($LeaseVal->"active-mac-address") status=bound ];
+    :if ([ :len $DupMacLeases ] > 1) do={
+      $LogPrintExit2 debug $0 ("Multiple bound leases found for mac-address " . ($LeaseVal->"active-mac-address") . ", using last one.") false;
+      :set LeaseVal [ /ip/dhcp-server/lease/get ($DupMacLeases->([ :len $DupMacLeases ] - 1)) ];
+    }
   } on-error={
     $LogPrintExit2 debug $0 ("A lease just vanished, ignoring.") false;
   }
 
-  :if ([ :len ($LeaseVal->"address") ] > 0) do={
-    :local Comment ($CommentPrefix . $LeaseVal->"mac-address");
-    :local MacDash [ $CharacterReplace ($LeaseVal->"mac-address") ":" "-" ];
+  :if ([ :len ($LeaseVal->"active-address") ] > 0) do={
+    :local Comment ($CommentPrefix . $LeaseVal->"active-mac-address");
+    :local MacDash [ $CharacterReplace ($LeaseVal->"active-mac-address") ":" "-" ];
     :local HostName [ $CharacterReplace [ $EitherOr ([ $ParseKeyValueStore ($LeaseVal->"comment") ]->"hostname") ($LeaseVal->"host-name") ] " " "" ];
-    :local Domain ([ $IfThenElse ($ServerNameInZone = true) ($LeaseVal->"server" . ".") ] . $Zone);
+    :local Network [ /ip/dhcp-server/network/find where ($LeaseVal->"active-address") in address ];
+    :local NetworkVal;
+    :if ([ :len $Network ] > 0) do={
+      :set NetworkVal [ /ip/dhcp-server/network/get ($Network->0) ];
+    }
+    :local NetworkInfo [ $ParseKeyValueStore ($NetworkVal->"comment") ];
+    :local NetDomain ([ $IfThenElse ([ :len ($NetworkInfo->"name-extra") ] > 0) ($NetworkInfo->"name-extra" . ".") ] . \
+      [ $EitherOr [ $EitherOr ($NetworkInfo->"domain") ($NetworkVal->"domain") ] $Domain ]);
 
-    :local DnsRecord [ /ip/dns/static/find where name=($MacDash . "." . $Domain) ];
+    :local DnsRecord [ /ip/dns/static/find where comment=$Comment (!type or type=A) ];
     :if ([ :len $DnsRecord ] > 0) do={
-      :local DnsIp [ /ip/dns/static/get $DnsRecord address ];
+      :local DnsRecordVal [ /ip/dns/static/get $DnsRecord ];
 
-      :local DupMacLeases [ /ip/dhcp-server/lease/find where mac-address=($LeaseVal->"mac-address") status=bound ];
-      :if ([ :len $DupMacLeases ] > 1) do={
-        $LogPrintExit2 debug $0 ("Multiple bound leases found for mac-address " . ($LeaseVal->"mac-address") . ", using ip address of last one.") false;
-        :set ($LeaseVal->"address") [ /ip/dhcp-server/lease/get ($DupMacLeases->([ :len $DupMacLeases ] - 1)) address ];
-      }
-
-      :if ($DnsIp = $LeaseVal->"address") do={
-        $LogPrintExit2 debug $0 ("DNS entry for " . ($MacDash . "." . $Domain) . " does not need updating.") false;
+      :if ($DnsRecordVal->"address" = $LeaseVal->"active-address" && $DnsRecordVal->"name" = ($MacDash . "." . $NetDomain)) do={
+        $LogPrintExit2 debug $0 ("DNS entry for " . $LeaseVal->"active-mac-address" . " does not need updating.") false;
       } else={
-        $LogPrintExit2 info $0 ("Replacing DNS entry for " . ($MacDash . "." . $Domain) . ", new address is " . $LeaseVal->"address" . ".") false;
-        /ip/dns/static/set address=($LeaseVal->"address") $DnsRecord;
+        $LogPrintExit2 info $0 ("Replacing DNS entry for " . $LeaseVal->"active-mac-address" . " (" . ($MacDash . "." . $NetDomain) . " -> " . $LeaseVal->"active-address" . ").") false;
+        /ip/dns/static/set address=($LeaseVal->"active-address") name=($MacDash . "." . $NetDomain) $DnsRecord;
       }
 
-      :local Cname [ /ip/dns/static/find where type=CNAME cname=($MacDash . "." . $Domain) comment=$Comment ];
+      :local Cname [ /ip/dns/static/find where comment=$Comment type=CNAME ];
       :if ([ :len $Cname ] = 0 && [ :len $HostName ] > 0) do={
-        $LogPrintExit2 info $0 ("Host name appeared, adding CNAME " . ($HostName . "." . $Domain) . " pointing to " . ($MacDash . "." . $Domain) . ".") false;
-        /ip/dns/static/add name=($HostName . "." . $Domain) type=CNAME cname=($MacDash . "." . $Domain) ttl=$Ttl comment=$Comment place-before=$PlaceBefore;
+        $LogPrintExit2 info $0 ("Host name appeared, adding CNAME (" . ($HostName . "." . $NetDomain) . " -> " . ($MacDash . "." . $NetDomain) . ").") false;
+        /ip/dns/static/add name=($HostName . "." . $NetDomain) type=CNAME cname=($MacDash . "." . $NetDomain) ttl=$Ttl comment=$Comment place-before=$PlaceBefore;
       }
-      :if ([ :len $Cname ] > 0 && [ /ip/dns/static/get $Cname name ] != ($HostName . "." . $Domain)) do={
-        $LogPrintExit2 info $0 ("Host name changed, updating CNAME (pointing to " . ($MacDash . "." . $Domain) . ") to " . ($HostName . "." . $Domain) . ".") false;
-        /ip/dns/static/set name=($HostName . "." . $Domain) $Cname;
+      :if ([ :len $Cname ] > 0 && [ /ip/dns/static/get $Cname name ] != ($HostName . "." . $NetDomain)) do={
+        $LogPrintExit2 info $0 ("Host name or domain changed, updating CNAME (" . ($HostName . "." . $NetDomain) . " -> " . ($MacDash . "." . $NetDomain) . ").") false;
+        /ip/dns/static/set name=($HostName . "." . $NetDomain) cname=($MacDash . "." . $NetDomain) $Cname;
       }
     } else={
-      $LogPrintExit2 info $0 ("Adding new DNS entry for " . ($MacDash . "." . $Domain) . ", address is " . $LeaseVal->"address" . ".") false;
-      /ip/dns/static/add name=($MacDash . "." . $Domain) type=A address=($LeaseVal->"address") ttl=$Ttl comment=$Comment place-before=$PlaceBefore;
+      $LogPrintExit2 info $0 ("Adding new DNS entry for " . $LeaseVal->"active-mac-address" . " (" . ($MacDash . "." . $NetDomain) . " -> " . $LeaseVal->"active-address" . ").") false;
+      /ip/dns/static/add name=($MacDash . "." . $NetDomain) type=A address=($LeaseVal->"active-address") ttl=$Ttl comment=$Comment place-before=$PlaceBefore;
       :if ([ :len $HostName ] > 0) do={
-        /ip/dns/static/add name=($HostName . "." . $Domain) type=CNAME cname=($MacDash . "." . $Domain) ttl=$Ttl comment=$Comment place-before=$PlaceBefore;
+        $LogPrintExit2 info $0 ("Adding new CNAME (" . ($HostName . "." . $NetDomain) . " -> " . ($MacDash . "." . $NetDomain) . ").") false;
+        /ip/dns/static/add name=($HostName . "." . $NetDomain) type=CNAME cname=($MacDash . "." . $NetDomain) ttl=$Ttl comment=$Comment place-before=$PlaceBefore;
       }
     }
   } else={

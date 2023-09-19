@@ -32,6 +32,10 @@ the ntp client.
 Then edit `global-config-overlay`, add `EmailGeneralTo` with a valid
 recipient address. Finally reload the configuration.
 
+> ℹ️ **Info**: Copy relevant configuration from
+> [`global-config`](../../global-config.rsc) (the one without `-overlay`) to
+> your local `global-config-overlay` and modify it to your specific needs.
+
 ### Sending to several recipients
 
 Sending notifications to several recipients is possible as well. Add
@@ -44,8 +48,8 @@ Usage and invocation
 There's nothing special to do. Every script or function sending a notification
 will now send it to your e-mail account.
 
-But of course you can send notifications directly or use a function in your
-own scripts. Give it a try:
+But of course you can use the function to send notifications directly. Give
+it a try:
 
     $SendEMail "Subject..." "Body..."
 
@@ -53,6 +57,17 @@ Alternatively this sends a notification with all available and configured
 methods:
 
     $SendNotification "Subject..." "Body..."
+
+To use the functions in your own scripts you have to declare them first.
+Place this before you call them:
+
+    :global SendEMail;
+    :global SendNotification;
+
+In case there is a situation when the queue needs to be purged there is a
+function available:
+
+    $PurgeEMailQueue;
 
 See also
 --------

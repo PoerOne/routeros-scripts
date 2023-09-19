@@ -17,13 +17,16 @@
 :global DailyPskQrCodeUrl;
 :global Identity;
 
+:global FormatLine;
 :global LogPrintExit2;
+:global ScriptLock;
 :global SendNotification2;
 :global SymbolForNotification;
 :global UrlEncode;
 :global WaitForFile;
 :global WaitFullyConnected;
 
+$ScriptLock $0;
 $WaitFullyConnected;
 
 # return pseudo-random string for PSK
@@ -32,27 +35,18 @@ $WaitFullyConnected;
 
   :global DailyPskSecrets;
 
-  :local Months { "jan"; "feb"; "mar"; "apr"; "may"; "jun";
-                  "jul"; "aug"; "sep"; "oct"; "nov"; "dec" };
+  :global ParseDate;
 
-  :local Month [ :pick $Date 0 3 ];
-  :local Day [ :tonum [ :pick $Date 4 6 ] ];
-  :local Year [ :pick $Date 7 11 ];
+  :set Date [ $ParseDate $Date ];
 
-  :for MIndex from=0 to=[ :len $Months ] do={
-    :if ($Months->$MIndex = $Month) do={
-      :set Month ($MIndex + 1);
-    }
-  }
-
-  :local A ((14 - $Month) / 12);
-  :local B ($Year - $A);
-  :local C ($Month + 12 * $A - 2);
-  :local WeekDay (7000 + $Day + $B + ($B / 4) - ($B / 100) + ($B / 400) + ((31 * $C) / 12));
+  :local A ((14 - ($Date->"month")) / 12);
+  :local B (($Date->"year") - $A);
+  :local C (($Date->"month") + 12 * $A - 2);
+  :local WeekDay (7000 + ($Date->"day") + $B + ($B / 4) - ($B / 100) + ($B / 400) + ((31 * $C) / 12));
   :set WeekDay ($WeekDay - (($WeekDay / 7) * 7));
 
-  :return (($DailyPskSecrets->0->($Day - 1)) . \
-    ($DailyPskSecrets->1->($Month - 1)) . \
+  :return (($DailyPskSecrets->0->(($Date->"day") - 1)) . \
+    ($DailyPskSecrets->1->(($Date->"month") - 1)) . \
     ($DailyPskSecrets->2->$WeekDay));
 }
 
@@ -85,9 +79,9 @@ $WaitFullyConnected;
         $SendNotification2 ({ origin=$0; \
           subject=([ $SymbolForNotification "calendar" ] . "daily PSK " . $Ssid); \
           message=("This is the daily PSK on " . $Identity . ":\n\n" . \
-            "SSID: " . $Ssid . "\n" . \
-            "PSK:  " . $NewPsk . "\n" . \
-            "Date: " . $Date . "\n\n" . \
+            [ $FormatLine "SSID" $Ssid ] . "\n" . \
+            [ $FormatLine "PSK" $NewPsk ] . "\n" . \
+            [ $FormatLine "Date" $Date ] . "\n\n" . \
             "A client device specific rule must not exist!"); link=$Link });
       }
     }

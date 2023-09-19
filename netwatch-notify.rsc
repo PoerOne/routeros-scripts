@@ -54,15 +54,11 @@ $ScriptLock $0;
 
 :local ScriptFromTerminalCached [ $ScriptFromTerminal $0 ];
 
-:if ([ /system/resource/get uptime ] < 5m) do={
-  $LogPrintExit2 info $0 ("System just booted, giving netwatch some time to settle.") true;
-}
-
 :if ([ :typeof $NetwatchNotify ] = "nothing") do={
   :set NetwatchNotify ({});
 }
 
-:foreach Host in=[ /tool/netwatch/find where comment~"notify" !disabled ] do={
+:foreach Host in=[ /tool/netwatch/find where comment~"notify" !disabled status!="unknown" ] do={
   :local HostVal [ /tool/netwatch/get $Host ];
   :local Type [ $IfThenElse ($HostVal->"type" ~ "^(https?-get|tcp-conn)\$") "service" "host" ];
   :local HostInfo [ $ParseKeyValueStore ($HostVal->"comment") ];

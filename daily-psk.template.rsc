@@ -7,8 +7,8 @@
 # update daily PSK (pre shared key)
 # https://git.eworm.de/cgit/routeros-scripts/about/doc/daily-psk.md
 #
-# !! This is just a template! Replace '%PATH%' with 'caps-man'
-# !! or 'interface wireless'!
+# !! This is just a template to generate the real script!
+# !! Pattern '%TEMPL%' is replaced, paths are filtered.
 
 :local 0 "daily-psk%TEMPL%";
 :global GlobalFunctionsReady;
@@ -18,13 +18,16 @@
 :global DailyPskQrCodeUrl;
 :global Identity;
 
+:global FormatLine;
 :global LogPrintExit2;
+:global ScriptLock;
 :global SendNotification2;
 :global SymbolForNotification;
 :global UrlEncode;
 :global WaitForFile;
 :global WaitFullyConnected;
 
+$ScriptLock $0;
 $WaitFullyConnected;
 
 # return pseudo-random string for PSK
@@ -33,27 +36,18 @@ $WaitFullyConnected;
 
   :global DailyPskSecrets;
 
-  :local Months { "jan"; "feb"; "mar"; "apr"; "may"; "jun";
-                  "jul"; "aug"; "sep"; "oct"; "nov"; "dec" };
+  :global ParseDate;
 
-  :local Month [ :pick $Date 0 3 ];
-  :local Day [ :tonum [ :pick $Date 4 6 ] ];
-  :local Year [ :pick $Date 7 11 ];
+  :set Date [ $ParseDate $Date ];
 
-  :for MIndex from=0 to=[ :len $Months ] do={
-    :if ($Months->$MIndex = $Month) do={
-      :set Month ($MIndex + 1);
-    }
-  }
-
-  :local A ((14 - $Month) / 12);
-  :local B ($Year - $A);
-  :local C ($Month + 12 * $A - 2);
-  :local WeekDay (7000 + $Day + $B + ($B / 4) - ($B / 100) + ($B / 400) + ((31 * $C) / 12));
+  :local A ((14 - ($Date->"month")) / 12);
+  :local B (($Date->"year") - $A);
+  :local C (($Date->"month") + 12 * $A - 2);
+  :local WeekDay (7000 + ($Date->"day") + $B + ($B / 4) - ($B / 100) + ($B / 400) + ((31 * $C) / 12));
   :set WeekDay ($WeekDay - (($WeekDay / 7) * 7));
 
-  :return (($DailyPskSecrets->0->($Day - 1)) . \
-    ($DailyPskSecrets->1->($Month - 1)) . \
+  :return (($DailyPskSecrets->0->(($Date->"day") - 1)) . \
+    ($DailyPskSecrets->1->(($Date->"month") - 1)) . \
     ($DailyPskSecrets->2->$WeekDay));
 }
 
@@ -61,24 +55,32 @@ $WaitFullyConnected;
 :local Date [ /system/clock/get date ];
 :local NewPsk [ $GeneratePSK $Date ];
 
-:foreach AccList in=[ /%PATH%/access-list/find where comment~$DailyPskMatchComment ] do={
+:foreach AccList in=[ /caps-man/access-list/find where comment~$DailyPskMatchComment ] do={
+:foreach AccList in=[ /interface/wifiwave2/access-list/find where comment~$DailyPskMatchComment ] do={
+:foreach AccList in=[ /interface/wireless/access-list/find where comment~$DailyPskMatchComment ] do={
+  :local SsidRegExp [ /caps-man/access-list/get $AccList ssid-regexp ];
+  :local SsidRegExp [ /interface/wifiwave2/access-list/get $AccList ssid-regexp ];
+  :local Configuration ([ /caps-man/configuration/find where ssid~$SsidRegExp ]->0);
+  :local Configuration ([ /interface/wifiwave2/configuration/find where ssid~$SsidRegExp ]->0);
+  :local Ssid [ /caps-man/configuration/get $Configuration ssid ];
+  :local Ssid [ /interface/wifiwave2/configuration/get $Configuration ssid ];
+  :local OldPsk [ /caps-man/access-list/get $AccList private-passphrase ];
+  :local OldPsk [ /interface/wifiwave2/access-list/get $AccList passphrase ];
+  # /caps-man /interface/wifiwave2 above - /interface/wireless below
   :local IntName [ /interface/wireless/access-list/get $AccList interface ];
   :local Ssid [ /interface/wireless/get $IntName ssid ];
   :local OldPsk [ /interface/wireless/access-list/get $AccList private-pre-shared-key ];
-  # /interface/wireless above - /caps-man below
-  :local SsidRegExp [ /caps-man/access-list/get $AccList ssid-regexp ];
-  :local Configuration ([ /caps-man/configuration/find where ssid~$SsidRegExp ]->0);
-  :local Ssid [ /caps-man/configuration/get $Configuration ssid ];
-  :local OldPsk [ /caps-man/access-list/get $AccList private-passphrase ];
   :local Skip 0;
 
   :if ($NewPsk != $OldPsk) do={
     $LogPrintExit2 info $0 ("Updating daily PSK for " . $Ssid . " to " . $NewPsk . " (was " . $OldPsk . ")") false;
-    /interface/wireless/access-list/set $AccList private-pre-shared-key=$NewPsk;
     /caps-man/access-list/set $AccList private-passphrase=$NewPsk;
+    /interface/wifiwave2/access-list/set $AccList passphrase=$NewPsk;
+    /interface/wireless/access-list/set $AccList private-pre-shared-key=$NewPsk;
 
-    :if ([ :len [ /interface/wireless/find where name=$IntName !disabled ] ] = 1) do={
     :if ([ :len [ /caps-man/actual-interface-configuration/find where configuration.ssid=$Ssid !disabled ] ] > 0) do={
+    :if ([ :len [ /interface/wifiwave2/actual-configuration/find where configuration.ssid=$Ssid ] ] > 0) do={
+    :if ([ :len [ /interface/wireless/find where name=$IntName !disabled ] ] = 1) do={
       :foreach SeenSsid in=$Seen do={
         :if ($SeenSsid = $Ssid) do={
           $LogPrintExit2 debug $0 ("Already sent a mail for SSID " . $Ssid . ", skipping.") false;
@@ -93,9 +95,9 @@ $WaitFullyConnected;
         $SendNotification2 ({ origin=$0; \
           subject=([ $SymbolForNotification "calendar" ] . "daily PSK " . $Ssid); \
           message=("This is the daily PSK on " . $Identity . ":\n\n" . \
-            "SSID: " . $Ssid . "\n" . \
-            "PSK:  " . $NewPsk . "\n" . \
-            "Date: " . $Date . "\n\n" . \
+            [ $FormatLine "SSID" $Ssid ] . "\n" . \
+            [ $FormatLine "PSK" $NewPsk ] . "\n" . \
+            [ $FormatLine "Date" $Date ] . "\n\n" . \
             "A client device specific rule must not exist!"); link=$Link });
       }
     }

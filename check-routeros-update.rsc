@@ -13,11 +13,13 @@
 :global Identity;
 :global SafeUpdateAll;
 :global SafeUpdateNeighbor;
+:global SafeUpdateNeighborIdentity;
 :global SafeUpdatePatch;
 :global SafeUpdateUrl;
 :global SentRouterosUpdateNotification;
 
 :global DeviceInfo;
+:global EscapeForRegEx;
 :global LogPrintExit2;
 :global ScriptFromTerminal;
 :global ScriptLock;
@@ -39,7 +41,7 @@ $ScriptLock $0;
 
 $WaitFullyConnected;
 
-:if ([ :len [ /system/scheduler/find where name="reboot-for-update" ] ] > 0) do={
+:if ([ :len [ /system/scheduler/find where name="\$RebootForUpdate" ] ] > 0) do={
   :error "A reboot for update is already scheduled.";
 }
 
@@ -64,7 +66,7 @@ $LogPrintExit2 debug $0 ("Checking for updates...") false;
     $LogPrintExit2 info $0 ("Installing ALL versions automatically, including " . \
       $Update->"latest-version" . "...") false;
     $SendNotification2 ({ origin=$0; \
-      subject=([ $SymbolForNotification "sparkles" ] . "RouterOS update"); \
+      subject=([ $SymbolForNotification "sparkles" ] . "RouterOS update: " . $Update->"latest-version"); \
       message=("Installing ALL versions automatically, including " . $Update->"latest-version" . \
         "... Updating on " . $Identity . "..."); link=$Link; silent=true });
     $DoUpdate;
@@ -73,20 +75,25 @@ $LogPrintExit2 debug $0 ("Checking for updates...") false;
   :if ($SafeUpdatePatch = true && ($NumInstalled & 0xffff0000) = ($NumLatest & 0xffff0000)) do={
     $LogPrintExit2 info $0 ("Version " . $Update->"latest-version" . " is a patch release, updating...") false;
     $SendNotification2 ({ origin=$0; \
-      subject=([ $SymbolForNotification "sparkles" ] . "RouterOS update"); \
+      subject=([ $SymbolForNotification "sparkles" ] . "RouterOS update: " . $Update->"latest-version"); \
       message=("Version " . $Update->"latest-version" . " is a patch update for " . $Update->"channel" . \
         ", updating on " . $Identity . "..."); link=$Link; silent=true });
     $DoUpdate;
   }
 
-  :if ($SafeUpdateNeighbor = true && [ :len [ /ip/neighbor/find where \
-       version=($Update->"latest-version" . " (" . $Update->"channel" . ")") ] ] > 0) do={
-    $LogPrintExit2 info $0 ("Seen a neighbor running version " . $Update->"latest-version" . ", updating...") false;
-    $SendNotification2 ({ origin=$0; \
-      subject=([ $SymbolForNotification "sparkles" ] . "RouterOS update"); \
-      message=("Seen a neighbor running version " . $Update->"latest-version" . " from " . $Update->"channel" . \
-        ", updating on " . $Identity . "..."); link=$Link; silent=true });
-    $DoUpdate;
+  :if ($SafeUpdateNeighbor = true) do={
+    :local Neighbors [ /ip/neighbor/find where platform="MikroTik" identity~$SafeUpdateNeighborIdentity \
+       version~("^" . [ $EscapeForRegEx ($Update->"latest-version") ] . "\\b") ];
+    :if ([ :len $Neighbors ] > 0) do={
+      :local Neighbor [ /ip/neighbor/get ($Neighbors->0) identity ];
+      $LogPrintExit2 info $0 ("Seen a neighbor (" . $Neighbor . ") running version " . \
+        $Update->"latest-version" . " from " . $Update->"channel" . ", updating...") false;
+      $SendNotification2 ({ origin=$0; \
+        subject=([ $SymbolForNotification "sparkles" ] . "RouterOS update: " . $Update->"latest-version"); \
+        message=("Seen a neighbor (" . $Neighbor . ") running version " . $Update->"latest-version" . \
+          " from " . $Update->"channel" . ", updating on " . $Identity . "..."); link=$Link; silent=true });
+      $DoUpdate;
+    }
   }
 
   :if ([ :len $SafeUpdateUrl ] > 0) do={
@@ -101,7 +108,7 @@ $LogPrintExit2 debug $0 ("Checking for updates...") false;
     :if ($Result->"status" = "finished" && $Result->"data" = $Update->"latest-version") do={
       $LogPrintExit2 info $0 ("Version " . $Update->"latest-version" . " is considered safe, updating...") false;
       $SendNotification2 ({ origin=$0; \
-        subject=([ $SymbolForNotification "sparkles" ] . "RouterOS update"); \
+        subject=([ $SymbolForNotification "sparkles" ] . "RouterOS update: " . $Update->"latest-version"); \
         message=("Version " . $Update->"latest-version" . " is considered safe for " . $Update->"channel" . \
           ", updating on " . $Identity . "..."); link=$Link; silent=true });
       $DoUpdate;
@@ -123,7 +130,7 @@ $LogPrintExit2 debug $0 ("Checking for updates...") false;
   }
 
   $SendNotification2 ({ origin=$0; \
-    subject=([ $SymbolForNotification "sparkles" ] . "RouterOS update"); \
+    subject=([ $SymbolForNotification "sparkles" ] . "RouterOS update: " . $Update->"latest-version"); \
     message=("A new RouterOS version " . ($Update->"latest-version") . \
       " is available for " . $Identity . ".\n\n" . \
       [ $DeviceInfo ]); link=$Link; silent=true });
@@ -137,7 +144,7 @@ $LogPrintExit2 debug $0 ("Checking for updates...") false;
   }
 
   $SendNotification2 ({ origin=$0; \
-    subject=([ $SymbolForNotification "warning-sign" ] . "RouterOS version"); \
+    subject=([ $SymbolForNotification "warning-sign" ] . "RouterOS version: " . $Update->"latest-version"); \
     message=("A different RouterOS version " . ($Update->"latest-version") . \
       " is available for " . $Identity . ", but it is a downgrade.\n\n" . \
       [ $DeviceInfo ]); link=$Link; silent=true });

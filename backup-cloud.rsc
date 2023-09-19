@@ -3,7 +3,7 @@
 # Copyright (c) 2013-2023 Christian Hesse <mail@eworm.de>
 # https://git.eworm.de/cgit/routeros-scripts/about/COPYING.md
 #
-# provides: backup-script
+# provides: backup-script, order=40
 #
 # upload backup to MikroTik cloud
 # https://git.eworm.de/cgit/routeros-scripts/about/doc/backup-cloud.md
@@ -17,13 +17,16 @@
 :global Identity;
 
 :global DeviceInfo;
+:global FormatLine;
 :global LogPrintExit2;
 :global RandomDelay;
 :global ScriptFromTerminal;
+:global ScriptLock;
 :global SendNotification2;
 :global SymbolForNotification;
 :global WaitFullyConnected;
 
+$ScriptLock $0;
 $WaitFullyConnected;
 
 :if ([ $ScriptFromTerminal $0 ] = false && $BackupRandomDelay > 0) do={
@@ -47,9 +50,9 @@ $WaitFullyConnected;
     subject=([ $SymbolForNotification "floppy-disk,cloud" ] . "Cloud backup"); \
     message=("Uploaded backup for " . $Identity . " to cloud.\n\n" . \
       [ $DeviceInfo ] . "\n\n" . \
-      "Name:           " . $Cloud->"name" . "\n" . \
-      "Size:           " . $Cloud->"size" . " B (" . ($Cloud->"size" / 1024) . " KiB)\n" . \
-      "Download key:   " . $Cloud->"secret-download-key"); silent=true });
+      [ $FormatLine "Name" ($Cloud->"name") ] . "\n" . \
+      [ $FormatLine "Size" ($Cloud->"size" . " B (" . ($Cloud->"size" / 1024) . " KiB)") ] . "\n" . \
+      [ $FormatLine "Download key" ($Cloud->"secret-download-key") ]); silent=true });
 } on-error={
   $SendNotification2 ({ origin=$0; \
     subject=([ $SymbolForNotification "floppy-disk,warning-sign" ] . "Cloud backup failed"); \

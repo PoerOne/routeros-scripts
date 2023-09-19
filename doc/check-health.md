@@ -59,7 +59,11 @@ Requirements and installation
 Just install the script and create a scheduler:
 
     $ScriptInstallUpdate check-health;
-    /system/scheduler/add interval=1m name=check-health on-event="/system/script/run check-health;" start-time=startup;
+    /system/scheduler/add interval=53s name=check-health on-event="/system/script/run check-health;" start-time=startup;
+
+> ℹ️ **Info**: Running lots of scripts simultaneously can tamper the
+> precision of cpu utilization, escpecially on devices with limited
+> resources. Thus an unusual interval is used here.
 
 Configuration
 -------------
@@ -69,6 +73,10 @@ The configuration goes to `global-config-overlay`, these are the parameters:
 * `CheckHealthTemperature`: an array specifying temperature thresholds for sensors
 * `CheckHealthVoltageLow`: value (in volt*10) giving a hard lower limit
 * `CheckHealthVoltagePercent`: percentage value to trigger voltage jumps
+
+> ℹ️ **Info**: Copy relevant configuration from
+> [`global-config`](../global-config.rsc) (the one without `-overlay`) to
+> your local `global-config-overlay` and modify it to your specific needs.
 
 Also notification settings are required for
 [e-mail](mod/notification-email.md),

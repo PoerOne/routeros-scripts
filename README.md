@@ -4,6 +4,9 @@ RouterOS Scripts
 [![GitHub stars](https://img.shields.io/github/stars/eworm-de/routeros-scripts?logo=GitHub&style=flat&color=red)](https://github.com/eworm-de/routeros-scripts/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/eworm-de/routeros-scripts?logo=GitHub&style=flat&color=green)](https://github.com/eworm-de/routeros-scripts/network)
 [![GitHub watchers](https://img.shields.io/github/watchers/eworm-de/routeros-scripts?logo=GitHub&style=flat&color=blue)](https://github.com/eworm-de/routeros-scripts/watchers)
+[![required RouterOS version](https://img.shields.io/badge/RouterOS-7.9-yellow?style=flat)](https://mikrotik.com/download/changelogs/)
+[![Telegram group @routeros_scripts](https://img.shields.io/badge/Telegram-%40routeros__scripts-%2326A5E4?logo=telegram&style=flat)](https://t.me/routeros_scripts)
+[![donate with PayPal](https://img.shields.io/badge/Like_it%3F-Donate!-orange?logo=githubsponsors&logoColor=orange&style=flat)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=A4ZXBD6YS2W8J)
 
 ![RouterOS Scripts Logo](logo.svg)
 
@@ -19,7 +22,10 @@ Requirements
 ------------
 
 Latest version of the scripts require recent RouterOS to function properly.
-Make sure to install latest updates before you begin.
+Make sure to install latest updates before you begin. If new functionality
+or a breaking change in RouterOS `7.n` is used in my scripts I push my
+change some time after `7.(n+1)` was released. At any time you should have
+at least two minor and their bugfix releases to choose from.
 
 Specific scripts may require even newer RouterOS version.
 
@@ -202,6 +208,7 @@ Available scripts
 * [Comment DHCP leases with info from access list](doc/dhcp-lease-comment.md)
 * [Create DNS records for DHCP leases](doc/dhcp-to-dns.md)
 * [Automatically upgrade firmware and reboot](doc/firmware-upgrade-reboot.md)
+* [Download, import and update firewall address-lists](doc/fw-addr-lists.md)
 * [Wait for global functions und modules](doc/global-wait.md)
 * [Send GPS position to server](doc/gps-track.md)
 * [Use WPA2 network with hotspot credentials](doc/hotspot-to-wpa.md)
@@ -219,7 +226,6 @@ Available scripts
 * [Run scripts on ppp connection](doc/ppp-on-up.md)
 * [Act on received SMS](doc/sms-action.md)
 * [Forward received SMS](doc/sms-forward.md)
-* [Import SSH keys](doc/ssh-keys-import.md)
 * [Play Super Mario theme](doc/super-mario-theme.md)
 * [Chat with your router and send commands via Telegram bot](doc/telegram-chat.md)
 * [Install LTE firmware upgrade](doc/unattended-lte-firmware-upgrade.md)
@@ -237,6 +243,7 @@ Available modules
 * [Send notifications via Matrix](doc/mod/notification-matrix.md)
 * [Send notifications via Telegram](doc/mod/notification-telegram.md)
 * [Download script and run it once](doc/mod/scriptrunonce.md)
+* [Import ssh keys for public key authentication](doc/mod/ssh-keys-import.md)
 
 Installing custom scripts & modules
 -----------------------------------
@@ -295,7 +302,7 @@ Contact
 
 We have a Telegram Group [RouterOS-Scripts](https://t.me/routeros_scripts)!
 
-![RouterOS Scripts Telegram Group](README.d/telegram-group.avif)
+[![RouterOS Scripts Telegram Group](README.d/telegram-group.avif)](https://t.me/routeros_scripts)
 
 Get help, give feedback or just chat - but do not expect free professional
 support!
@@ -319,7 +326,7 @@ for you. If you like the scripts and think this is of value for you or your
 business please consider to
 [donate with PayPal](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=A4ZXBD6YS2W8J).
 
-[![donate with PayPal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=A4ZXBD6YS2W8J)
+[![donate with PayPal](https://img.shields.io/badge/Like_it%3F-Donate!-orange?logo=githubsponsors&logoColor=orange&style=for-the-badge)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=A4ZXBD6YS2W8J)
 
 Thanks a lot for your support!
 

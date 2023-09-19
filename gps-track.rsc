@@ -14,21 +14,30 @@
 :global Identity;
 
 :global LogPrintExit2;
+:global ScriptLock;
+:global WaitFullyConnected;
+
+$ScriptLock $0;
+$WaitFullyConnected;
 
 :local CoordinateFormat [ /system/gps/get coordinate-format ];
 :local Gps [ /system/gps/monitor once as-value ];
 
 :if ($Gps->"valid" = true) do={
-  /tool/fetch check-certificate=yes-without-crl $GpsTrackUrl output=none \
-    http-method=post http-header-field="Content-Type: application/json" \
-    http-data=("{" . \
-      "\"lat\":\"" . ($Gps->"latitude") . "\"," . \
-      "\"lon\":\"" . ($Gps->"longitude") . "\"," . \
-      "\"identity\":\"" . $Identity . "\"" . \
-    "}") as-value;
-  $LogPrintExit2 debug $0 ("Sending GPS data in " . $CoordinateFormat . " format: " . \
-    "lat: " . ($Gps->"latitude") . " " . \
-    "lon: " . ($Gps->"longitude")) false;
+  :do {
+    /tool/fetch check-certificate=yes-without-crl $GpsTrackUrl output=none \
+      http-method=post http-header-field="Content-Type: application/json" \
+      http-data=("{" . \
+        "\"lat\":\"" . ($Gps->"latitude") . "\"," . \
+        "\"lon\":\"" . ($Gps->"longitude") . "\"," . \
+        "\"identity\":\"" . $Identity . "\"" . \
+      "}") as-value;
+    $LogPrintExit2 debug $0 ("Sending GPS data in " . $CoordinateFormat . " format: " . \
+      "lat: " . ($Gps->"latitude") . " " . \
+      "lon: " . ($Gps->"longitude")) false;
+  } on-error={
+    $LogPrintExit2 warning $0 ("Failed sending GPS data!") false;
+  }
 } else={
   $LogPrintExit2 debug $0 ("GPS data not valid.") false;
 }

@@ -2,6 +2,9 @@
 # RouterOS script: mod/scriptrunonece
 # Copyright (c) 2020-2023 Christian Hesse <mail@eworm.de>
 # https://git.eworm.de/cgit/routeros-scripts/about/COPYING.md
+#
+# download script and run it once
+# https://git.eworm.de/cgit/routeros-scripts/about/doc/mod/scriptrunonce.md
 
 :global ScriptRunOnce;
 
@@ -16,7 +19,7 @@
   :global ValidateSyntax;
 
   :foreach Script in=$Scripts do={
-    :if (!($Script ~ "^(ftp|https\?|sftp)://")) do={
+    :if (!($Script ~ "^(ftp|https?|sftp)://")) do={
       :if ([ :len $ScriptRunOnceBaseUrl ] = 0) do={
         $LogPrintExit2 warning $0 ("Script '" . $Script . "' is not an url and base url is not available.") true;
       }

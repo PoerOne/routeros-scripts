@@ -41,6 +41,10 @@ Finally edit `global-config-overlay`, add `TelegramTokenId` with the token
 from *BotFather* and `TelegramChatId` with your id from *GetIDs Bot*. Then
 reload the configuration.
 
+> ℹ️ **Info**: Copy relevant configuration from
+> [`global-config`](../../global-config.rsc) (the one without `-overlay`) to
+> your local `global-config-overlay` and modify it to your specific needs.
+
 ### Notifications to a group
 
 Sending notifications to a group is possible as well. Add your bot and the
@@ -53,8 +57,8 @@ Usage and invocation
 There's nothing special to do. Every script or function sending a notification
 will now send it to your Telegram account.
 
-But of course you can send notifications directly or use a function in your
-own scripts. Give it a try:
+But of course you can use the function to send notifications directly. Give
+it a try:
 
     $SendTelegram "Subject..." "Body..."
 
@@ -62,6 +66,31 @@ Alternatively this sends a notification with all available and configured
 methods:
 
     $SendNotification "Subject..." "Body..."
+
+To use the functions in your own scripts you have to declare them first.
+Place this before you call them:
+
+    :global SendTelegram;
+    :global SendNotification;
+
+In case there is a situation when the queue needs to be purged there is a
+function available:
+
+    $PurgeTelegramQueue;
+
+Tips & Tricks
+-------------
+
+### Set a profile photo
+
+You can use a profile photo for your bot to make it recognizable. Open the
+chat with [BotFather](https://t.me/BotFather) and set it there.
+
+![set profile photo](notification-telegram.d/setuserpic.avif)
+
+Have a look at my
+[RouterOS-Scripts Logo Color Changer](https://git.eworm.de/cgit/routeros-scripts/plain/contrib/logo-color.html)
+to create a colored version of this scripts' logo.
 
 See also
 --------

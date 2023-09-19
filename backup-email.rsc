@@ -3,7 +3,7 @@
 # Copyright (c) 2013-2023 Christian Hesse <mail@eworm.de>
 # https://git.eworm.de/cgit/routeros-scripts/about/COPYING.md
 #
-# provides: backup-script
+# provides: backup-script, order=20
 #
 # create and email backup and config file
 # https://git.eworm.de/cgit/routeros-scripts/about/doc/backup-email.md
@@ -22,10 +22,12 @@
 
 :global CharacterReplace;
 :global DeviceInfo;
+:global FormatLine;
 :global LogPrintExit2;
 :global MkDir;
 :global RandomDelay;
 :global ScriptFromTerminal;
+:global ScriptLock;
 :global SendEMail2;
 :global SymbolForNotification;
 :global WaitForFile;
@@ -40,6 +42,7 @@
   $LogPrintExit2 error $0 ("Configured to send neither backup nor config export.") true;
 }
 
+$ScriptLock $0;
 $WaitFullyConnected;
 
 :if ([ $ScriptFromTerminal $0 ] = false && $BackupRandomDelay > 0) do={
@@ -77,6 +80,7 @@ $WaitFullyConnected;
 
 # global-config-overlay
 :if ($BackupSendGlobalConfig = true) do={
+  # Do *NOT* use '/file/add ...' here, as it is limited to 4095 bytes!
   :execute script={ :put [ /system/script/get global-config-overlay source ]; } \
       file=($FilePath . ".conf");
   $WaitForFile ($FilePath . ".conf.txt");
@@ -91,9 +95,9 @@ $SendEMail2 ({ origin=$0; \
   message=("See attached files for backup and config export for " . \
     $Identity . ".\n\n" . \
     [ $DeviceInfo ] . "\n\n" . \
-    "Backup file:    " . $BackupFile . "\n" . \
-    "Export file:    " . $ExportFile . "\n" . \
-    "Config file:    " . $ConfigFile); \
+    [ $FormatLine "Backup file" $BackupFile ] . "\n" . \
+    [ $FormatLine "Export file" $ExportFile ] . "\n" . \
+    [ $FormatLine "Config file" $ConfigFile ]); \
   attach=$Attach; remove-attach=true });
 
 # wait for the mail to be sent

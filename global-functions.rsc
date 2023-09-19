@@ -4,7 +4,7 @@
 #                         Michael Gisbers <michael@gisbers.de>
 # https://git.eworm.de/cgit/routeros-scripts/about/COPYING.md
 #
-# requires RouterOS, version=7.7
+# requires RouterOS, version=7.9beta4
 #
 # global functions
 # https://git.eworm.de/cgit/routeros-scripts/about/
@@ -12,10 +12,11 @@
 :local 0 "global-functions";
 
 # expected configuration version
-:global ExpectedConfigVersion 97;
+:global ExpectedConfigVersion 105;
 
 # global variables not to be changed by user
 :global GlobalFunctionsReady false;
+:global FetchUserAgent ("User-Agent: Mikrotik/" . [ /system/resource/get version ] . " Fetch");
 :global Identity [ /system/identity/get name ];
 
 # global functions
@@ -29,6 +30,8 @@
 :global DownloadPackage;
 :global EitherOr;
 :global EscapeForRegEx;
+:global FormatLine;
+:global FormatMultiLines;
 :global GetMacVendor;
 :global GetRandom20CharAlNum;
 :global GetRandom20CharHex;
@@ -44,6 +47,7 @@
 :global LogPrintExit2;
 :global MkDir;
 :global NotificationFunctions;
+:global ParseDate;
 :global ParseKeyValueStore;
 :global PrettyPrint;
 :global RandomDelay;
@@ -106,6 +110,7 @@
 :set CertificateDownload do={
   :local CommonName [ :tostr $1 ];
 
+  :global FetchUserAgent;
   :global ScriptUpdatesBaseUrl;
   :global ScriptUpdatesUrlSuffix;
 
@@ -119,9 +124,8 @@
   :do {
     :local LocalFileName ($CommonName . ".pem");
     :local UrlFileName ([ $UrlEncode $CommonName ] . ".pem");
-    /tool/fetch check-certificate=yes-without-crl \
-      ($ScriptUpdatesBaseUrl . "certs/" . \
-      $UrlFileName . $ScriptUpdatesUrlSuffix) \
+    /tool/fetch check-certificate=yes-without-crl http-header-field=$FetchUserAgent \
+      ($ScriptUpdatesBaseUrl . "certs/" . $UrlFileName . $ScriptUpdatesUrlSuffix) \
       dst-path=$LocalFileName as-value;
     $WaitForFile $LocalFileName;
     /certificate/import file-name=$LocalFileName passphrase="" as-value;
@@ -135,6 +139,7 @@
         "CommonName \"" . $CommonName . "\"!") false;
     :return false;
   }
+  :delay 1s;
   :return true;
 }
 
@@ -194,6 +199,7 @@
   :global Identity;
 
   :global IfThenElse;
+  :global FormatLine;
 
   :local Resource [ /system/resource/get ];
   :local RouterBoard;
@@ -204,27 +210,27 @@
   :local Update [ /system/package/update/get ];
 
   :return ( \
-         "Hostname:       " . $Identity . \
-       "\nBoard name:     " . $Resource->"board-name" . \
-       "\nArchitecture:   " . $Resource->"architecture-name" . \
+    [ $FormatLine "Hostname" $Identity ] . "\n" . \
+    [ $FormatLine "Board name" ($Resource->"board-name") ] . "\n" . \
+    [ $FormatLine "Architecture" ($Resource->"architecture-name") ] . "\n" . \
     [ $IfThenElse ($RouterBoard->"routerboard" = true) \
-      ("\nModel:          " . $RouterBoard->"model" . \
-         [ $IfThenElse ([ :len ($RouterBoard->"revision") ] > 0) \
-           (" " . $RouterBoard->"revision") ] . \
-       "\nSerial number:  " . $RouterBoard->"serial-number") ] . \
+      ([ $FormatLine "Model" ($RouterBoard->"model") ] . \
+       [ $IfThenElse ([ :len ($RouterBoard->"revision") ] > 0) \
+           (" " . $RouterBoard->"revision") ] . "\n" . \
+       [ $FormatLine "Serial number" ($RouterBoard->"serial-number") ] . "\n") ] . \
     [ $IfThenElse ([ :len ($License->"level") ] > 0) \
-      ("\nLicense:        " . $License->"level") ] . \
-       "\nRouterOS:" . \
-       "\n    Channel:    " . $Update->"channel" . \
-       "\n    Installed:  " . $Update->"installed-version" . \
+      ([ $FormatLine "License" ($License->"level") ] . "\n") ] . \
+    "RouterOS:\n" . \
+    [ $FormatLine "    Channel" ($Update->"channel") ] . "\n" . \
+    [ $FormatLine "    Installed" ($Update->"installed-version") ] . "\n" . \
     [ $IfThenElse ([ :typeof ($Update->"latest-version") ] != "nothing" && \
         $Update->"installed-version" != $Update->"latest-version") \
-      ("\n    Available:  " . $Update->"latest-version") ] . \
+      ([ $FormatLine "    Available" ($Update->"latest-version") ] . "\n") ] . \
     [ $IfThenElse ($RouterBoard->"routerboard" = true && \
         $RouterBoard->"current-firmware" != $RouterBoard->"upgrade-firmware") \
-      ("\n    Firmware:   " . $RouterBoard->"current-firmware") ] . \
-       "\nRouterOS-Scripts:" . \
-       "\n    Version:    " . $ExpectedConfigVersion);
+      ([ $FormatLine "    Firmware" ($RouterBoard->"current-firmware") ] . "\n") ] . \
+    "RouterOS-Scripts:\n" . \
+    [ $FormatLine "    Version" $ExpectedConfigVersion ]);
 }
 
 # convert line endings, DOS -> UNIX
@@ -304,6 +310,9 @@
   :if ([ :typeof $1 ] = "num") do={
     :return [ $IfThenElse ($1 != 0) $1 $2 ];
   }
+  :if ([ :typeof $1 ] = "time") do={
+    :return [ $IfThenElse ($1 > 0s) $1 $2 ];
+  }
   :return [ $IfThenElse ([ :len [ :tostr $1 ] ] > 0) $1 $2 ];
 }
 
@@ -316,7 +325,7 @@
   }
 
   :local Return "";
-  :local Chars ("^.[]\$()|*+\?{}\\");
+  :local Chars ("^.[]\$()|*+?{}\\");
 
   :for I from=0 to=([ :len $Input ] - 1) do={
     :local Char [ :pick $Input $I ];
@@ -324,6 +333,45 @@
       :set Char ("\\" . $Char);
     }
     :set Return ($Return . $Char);
+  }
+
+  :return $Return;
+}
+
+# format a line for output
+:set FormatLine do={
+  :local Key    [ :tostr $1 ];
+  :local Value  [ :tostr $2 ];
+  :local Indent [ :tonum $3 ];
+  :local Spaces "                ";
+  :local Return "";
+
+  :global EitherOr;
+
+  :set Indent [ $EitherOr $Indent 16 ];
+
+  :if ([ :len $Key ] > 0) do={ :set Return ($Key . ":"); }
+  :if ([ :len $Key ] > ($Indent - 2)) do={
+    :set Return ($Return . "\n" . [ :pick $Spaces 0 $Indent ] . $Value);
+  } else={
+    :set Return ($Return . [ :pick $Spaces 0 ($Indent - [ :len $Return ]) ] . $Value);
+  }
+
+  :return $Return;
+}
+
+# format multiple lines for output
+:set FormatMultiLines do={
+  :local Key    [ :tostr   $1 ];
+  :local Values [ :toarray $2 ];
+  :local Indent [ :tonum   $3 ];
+  :local Return;
+
+  :global FormatLine;
+
+  :set Return [ $FormatLine $Key ($Values->0) $Indent ];
+  :foreach Value in=[ :pick $Values 1 [ :len $Values ] ] do={
+    :set Return ($Return . "\n" . [ $FormatLine "" $Value $Indent ]);
   }
 
   :return $Return;
@@ -473,6 +521,7 @@
 # check if system time is sync
 :set IsTimeSync do={
   :global IsTimeSyncCached;
+  :global IsTimeSyncResetNtp;
 
   :global LogPrintExit2;
 
@@ -485,6 +534,19 @@
       :set IsTimeSyncCached true;
       :return true;
     }
+
+    :if ([ :typeof $IsTimeSyncResetNtp ] = "nothing") do={
+      :set IsTimeSyncResetNtp 0s;
+    }
+    :local Uptime [ /system/resource/get uptime ];
+    :if ($Uptime - $IsTimeSyncResetNtp < 3m) do={
+      :return false;
+    }
+
+    :set IsTimeSyncResetNtp $Uptime;
+    /system/ntp/client/set enabled=no;
+    :delay 20ms;
+    /system/ntp/client/set enabled=yes;
     :return false;
   }
 
@@ -558,7 +620,6 @@
   :global CleanFilePath;
   :global GetRandom20CharAlNum;
   :global LogPrintExit2;
-  :global RequiredRouterOS;
   :global WaitForFile;
 
   :local MkTmpfs do={
@@ -591,67 +652,46 @@
     :return true;
   }
 
-  :if ([ $RequiredRouterOS $0 "7.9beta4" false ] = true) do={
-    :if ([ :pick $Path 0 5 ] = "tmpfs") do={
-      :if ([ $MkTmpfs ] = false) do={
-        :return false;
-      }
-    }
-
-    :do {
-      :local File ($Path . "/file");
-      /file/add name=$File;
-      $WaitForFile $File;
-      /file/remove $File;
-    } on-error={
-      $LogPrintExit2 warning $0 ("Making directory '" . $Path . "' failed!") false;
+  :if ([ :pick $Path 0 5 ] = "tmpfs") do={
+    :if ([ $MkTmpfs ] = false) do={
       :return false;
     }
-  } else={
-    :local Error false;
-    :local PathNext "";
-    :foreach Dir in=[ :toarray [ $CharacterReplace $Path "/" "," ] ] do={
-      :local Continue false;
-      :set PathNext [ $CleanFilePath ($PathNext . "/" . $Dir) ];
-
-      :if ([ :len [ /file/find where name=$PathNext !(name="tmpfs") type="directory" ] ] = 1) do={
-        :set Continue true;
-      }
-
-      :if ($Continue = false && $PathNext = "tmpfs") do={
-        :if ([ $MkTmpfs ] = false) do={
-          :return false;
-        }
-        :set Continue true;
-      }
-
-      :if ($Continue = false && [ :len [ /file/find where name=$PathNext ] ] = 1) do={
-        $LogPrintExit2 warning $0 ("The path '" . $PathNext . "' exists, but is not a directory.") false;
-        :return false;
-      }
-
-      :if ($Continue = false) do={
-        :local Name ($PathNext . "-" . [ $GetRandom20CharAlNum 6 ]);
-        :do {
-          /ip/smb/share/add disabled=yes directory=$PathNext name=$Name;
-          $WaitForFile $PathNext;
-        } on-error={
-          $LogPrintExit2 warning $0 ("Making directory '" . $PathNext . "' failed!") false;
-          :set Error true;
-        }
-        /ip/smb/share/remove [ find where name=$Name ];
-        :if ($Error = true) do={
-          :return false;
-        }
-      }
-    }
   }
+
+  :do {
+    :local File ($Path . "/file");
+    /file/add name=$File;
+    $WaitForFile $File;
+    /file/remove $File;
+  } on-error={
+    $LogPrintExit2 warning $0 ("Making directory '" . $Path . "' failed!") false;
+    :return false;
+  }
+
   :return true;
 }
 
 # prepare NotificationFunctions array
 :if ([ :typeof $NotificationFunctions ] != "array") do={
   :set NotificationFunctions ({});
+}
+
+# parse the date and return a named array
+:set ParseDate do={
+  :local Date [ :tostr $1 ];
+
+  :if ([ :pick $Date 4 5 ] != "-") do={
+    :local Months { "jan"=1; "feb"=2; "mar"=3; "apr"=4; "may"=5; "jun"=6;
+                    "jul"=7; "aug"=8; "sep"=9; "oct"=10; "nov"=11; "dec"=12 };
+
+    :return ({ "year"=[ :tonum [ :pick $Date 7 11 ] ];
+              "month"=($Months->[ :pick $Date 0 3 ]);
+                "day"=[ :tonum [ :pick $Date 4 6 ] ] });
+  }
+
+  :return ({ "year"=[ :tonum [ :pick $Date 0 4 ] ];
+            "month"=[ :tonum [ :pick $Date 5 7 ] ];
+              "day"=[ :tonum [ :pick $Date 8 10 ] ] });
 }
 
 # parse key value store
@@ -704,7 +744,7 @@
   :global LogPrintExit2;
   :global VersionToNum;
 
-  :if (!($Required ~ "^\\d+\\.\\d+((beta|rc|\\.)\\d+|)\$")) do={
+  :if (!($Required ~ "^\\d+\\.\\d+((alpha|beta|rc|\\.)\\d+|)\$")) do={
     $LogPrintExit2 error $0 ("No valid RouterOS version: " . $Required) false;
     :return false;
   }
@@ -746,6 +786,7 @@
   :local NewComment [ :tostr   $2 ];
 
   :global ExpectedConfigVersion;
+  :global FetchUserAgent;
   :global Identity;
   :global IDonate;
   :global NoNewsAndChangesNotification;
@@ -783,9 +824,8 @@
   :local ExpectedConfigVersionBefore $ExpectedConfigVersion;
   :local ReloadGlobalFunctions false;
   :local ReloadGlobalConfig false;
-  :local UserAgent ("User-Agent: Mikrotik/" . [ /system/resource/get version ] . " Fetch");
 
-  :foreach Script in=[ /system/script/find where source~"^#!rsc by RouterOS\n" ] do={
+  :foreach Script in=[ /system/script/find where source~"^#!rsc by RouterOS\r?\n" ] do={
     :local ScriptVal [ /system/script/get $Script ];
     :local ScriptFile [ /file/find where name=("script-updates/" . $ScriptVal->"name") . ".rsc" ];
     :local SourceNew;
@@ -813,7 +853,7 @@
           :local Url ($BaseUrl . $ScriptVal->"name" . ".rsc" . $UrlSuffix);
 
           $LogPrintExit2 debug $0 ("Fetching script '" . $ScriptVal->"name" . "' from url: " . $Url) false;
-          :local Result [ /tool/fetch check-certificate=yes-without-crl http-header-field=$UserAgent \
+          :local Result [ /tool/fetch check-certificate=yes-without-crl http-header-field=$FetchUserAgent \
             $Url output=user as-value ];
           :if ($Result->"status" = "finished") do={
             :set SourceNew ($Result->"data");
@@ -879,7 +919,7 @@
       /system/script/run global-config;
     } on-error={
       $LogPrintExit2 error $0 ("Reloading global configuration failed!" . \
-        " Syntax error or missing overlay\?") false;
+        " Syntax error or missing overlay?") false;
     }
   }
 
@@ -897,7 +937,7 @@
     :do {
       :local Url ($ScriptUpdatesBaseUrl . "news-and-changes.rsc" . $ScriptUpdatesUrlSuffix);
       $LogPrintExit2 debug $0 ("Fetching news, changes and migration: " . $Url) false;
-      :local Result [ /tool/fetch check-certificate=yes-without-crl http-header-field=$UserAgent \
+      :local Result [ /tool/fetch check-certificate=yes-without-crl http-header-field=$FetchUserAgent \
         $Url output=user as-value ];
       :if ($Result->"status" = "finished") do={
         :set ChangeLogCode ($Result->"data");
@@ -1188,7 +1228,7 @@
   }
 
   :local Return "";
-  :local Chars ("\n\r !\"#\$%&'()*+,:;<=>\?@[\\]^`{|}~");
+  :local Chars ("\n\r !\"#\$%&'()*+,:;<=>?@[\\]^`{|}~");
   :local Subs { "%0A"; "%0D"; "%20"; "%21"; "%22"; "%23"; "%24"; "%25"; "%26"; "%27";
          "%28"; "%29"; "%2A"; "%2B"; "%2C"; "%3A"; "%3B"; "%3C"; "%3D"; "%3E"; "%3F";
          "%40"; "%5B"; "%5C"; "%5D"; "%5E"; "%60"; "%7B"; "%7C"; "%7D"; "%7E" };
@@ -1226,8 +1266,10 @@
 
   :global CharacterReplace;
 
-  :set Input [ $CharacterReplace [ $CharacterReplace [ $CharacterReplace $Input \
-    "." "," ] "beta" ",beta," ] "rc" ",rc," ];
+  :set Input [ $CharacterReplace $Input "." "," ];
+  :foreach I in={ "alpha"; "beta"; "rc" } do={
+    :set Input [ $CharacterReplace $Input $I ("," . $I . ",") ];
+  }
 
   :foreach Value in=([ :toarray $Input ], 0) do={
     :local Num [ :tonum $Value ];
@@ -1236,7 +1278,8 @@
         :set Return ($Return + 0xff00);
         :set Multi ($Multi / 0x100);
       } else={
-        :if ($Value = "beta") do={ :set Return ($Return + 0x3f00); }
+        :if ($Value = "alpha") do={ :set Return ($Return + 0x3f00); }
+        :if ($Value = "beta") do={ :set Return ($Return + 0x5f00); }
         :if ($Value = "rc") do={ :set Return ($Return + 0x7f00); }
       }
     }

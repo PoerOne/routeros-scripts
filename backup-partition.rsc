@@ -3,7 +3,7 @@
 # Copyright (c) 2022-2023 Christian Hesse <mail@eworm.de>
 # https://git.eworm.de/cgit/routeros-scripts/about/COPYING.md
 #
-# provides: backup-script
+# provides: backup-script, order=70
 #
 # save configuration to fallback partition
 # https://git.eworm.de/cgit/routeros-scripts/about/doc/backup-partition.md
@@ -13,6 +13,9 @@
 :while ($GlobalFunctionsReady != true) do={ :delay 500ms; }
 
 :global LogPrintExit2;
+:global ScriptLock;
+
+$ScriptLock $0;
 
 :if ([ :len [ /partitions/find ] ] < 2) do={
   $LogPrintExit2 error $0 ("Device does not have a fallback partition.") true;
